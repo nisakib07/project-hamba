@@ -19,7 +19,7 @@ export default function ConfirmModal({
   onConfirm,
   title,
   children,
-  confirmText = "Confirm",
+  confirmText = "নিশ্চিত",
   confirmColor = "danger",
   loading = false,
 }: ConfirmModalProps) {
@@ -38,14 +38,14 @@ export default function ConfirmModal({
         </div>
         <div style={{ display: "flex", gap: "0.75rem", justifyContent: "flex-end" }}>
           <button className="btn btn-secondary" onClick={onClose} disabled={loading}>
-            Cancel
+            বাতিল
           </button>
           <button
             className={`btn ${confirmColor === "danger" ? "btn-danger" : "btn-primary"}`}
             onClick={onConfirm}
             disabled={loading}
           >
-            {loading ? "Processing..." : confirmText}
+            {loading ? "প্রক্রিয়াকরণ..." : confirmText}
           </button>
         </div>
       </div>

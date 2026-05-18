@@ -26,6 +26,8 @@ function formatCurrency(amount: number): string {
   return "৳" + amount.toLocaleString("en-BD", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 }
 
+const statusBn: Record<string, string> = { active: "চলমান", completed: "সম্পন্ন" };
+
 export default function BatchListPage() {
   const [batches, setBatches] = useState<Batch[]>([]);
   const [loading, setLoading] = useState(true);
@@ -49,17 +51,17 @@ export default function BatchListPage() {
   }, [fetchBatches]);
 
   const deleteBatch = async (id: string, name: string) => {
-    if (!confirm(`Are you sure you want to delete "${name}"? This will delete all associated sales and expenses.`))
+    if (!confirm(`আপনি কি নিশ্চিত "${name}" ডিলিট করতে চান? এর সাথে সংযুক্ত সব বিক্রি ও খরচও মুছে যাবে।`))
       return;
     try {
       const res = await fetch(`/api/batches/${id}`, { method: "DELETE" });
       const json = await res.json();
       if (json.success) {
-        toast.success(`Deleted "${name}"`);
+        toast.success(`"${name}" ডিলিট করা হয়েছে`);
         setBatches((prev) => prev.filter((b) => b._id !== id));
       }
     } catch {
-      toast.error("Failed to delete batch");
+      toast.error("ডিলিট করতে সমস্যা হয়েছে");
     }
   };
 
@@ -86,15 +88,15 @@ export default function BatchListPage() {
       >
         <div>
           <h1 style={{ fontSize: "1.75rem", fontWeight: 800, marginBottom: "0.35rem" }}>
-            Cow Batches
+            ব্যাচ সমূহ
           </h1>
           <p style={{ color: "var(--text-muted)", fontSize: "0.9rem" }}>
-            Manage all your cow purchase and slaughter batches
+            আপনার সব গরু ক্রয় ও জবাইয়ের ব্যাচ
           </p>
         </div>
         <Link href="/batches/new" className="btn btn-primary">
           <HiOutlinePlusCircle size={18} />
-          New Batch
+          নতুন ব্যাচ
         </Link>
       </div>
 
@@ -123,7 +125,7 @@ export default function BatchListPage() {
           />
           <input
             type="text"
-            placeholder="Search batches..."
+            placeholder="ব্যাচ খুঁজুন..."
             className="form-input"
             style={{ paddingLeft: "2.5rem" }}
             value={search}
@@ -136,9 +138,9 @@ export default function BatchListPage() {
           value={filterStatus}
           onChange={(e) => setFilterStatus(e.target.value)}
         >
-          <option value="all">All Status</option>
-          <option value="active">Active</option>
-          <option value="completed">Completed</option>
+          <option value="all">সব স্ট্যাটাস</option>
+          <option value="active">চলমান</option>
+          <option value="completed">সম্পন্ন</option>
         </select>
       </div>
 
@@ -148,12 +150,12 @@ export default function BatchListPage() {
           <div className="empty-state">
             <div className="empty-state-icon">🐄</div>
             <div className="empty-state-title">
-              {batches.length === 0 ? "No batches yet" : "No results found"}
+              {batches.length === 0 ? "এখনও কোনো ব্যাচ নেই" : "কোনো ফলাফল পাওয়া যায়নি"}
             </div>
             <div className="empty-state-text">
               {batches.length === 0
-                ? "Create your first cow batch to start tracking profits"
-                : "Try adjusting your search or filters"}
+                ? "লাভ-ক্ষতি হিসাব শুরু করতে প্রথম ব্যাচ তৈরি করুন"
+                : "সার্চ বা ফিল্টার পরিবর্তন করে দেখুন"}
             </div>
             {batches.length === 0 && (
               <Link
@@ -161,7 +163,7 @@ export default function BatchListPage() {
                 className="btn btn-primary"
                 style={{ marginTop: "1rem" }}
               >
-                Create First Batch
+                প্রথম ব্যাচ তৈরি করুন
               </Link>
             )}
           </div>
@@ -208,7 +210,7 @@ export default function BatchListPage() {
                       color: "var(--text-muted)",
                     }}
                   >
-                    {new Date(batch.purchaseDate).toLocaleDateString("en-GB", {
+                    {new Date(batch.purchaseDate).toLocaleDateString("bn-BD", {
                       day: "numeric",
                       month: "short",
                       year: "numeric",
@@ -220,7 +222,7 @@ export default function BatchListPage() {
                     batch.status === "active" ? "badge-green" : "badge-blue"
                   }`}
                 >
-                  {batch.status}
+                  {statusBn[batch.status] || batch.status}
                 </span>
               </div>
 
@@ -245,7 +247,7 @@ export default function BatchListPage() {
                       marginBottom: "0.2rem",
                     }}
                   >
-                    Buying Cost
+                    ক্রয়মূল্য
                   </div>
                   <div style={{ fontWeight: 600, fontSize: "0.9rem" }}>
                     {formatCurrency(batch.buyingCost)}
@@ -265,7 +267,7 @@ export default function BatchListPage() {
                       marginBottom: "0.2rem",
                     }}
                   >
-                    Price/kg
+                    দাম/কেজি
                   </div>
                   <div style={{ fontWeight: 600, fontSize: "0.9rem" }}>
                     {formatCurrency(batch.baseMeatPricePerKg)}
@@ -284,7 +286,7 @@ export default function BatchListPage() {
                   className="btn-icon"
                   onClick={() => deleteBatch(batch._id, batch.batchName)}
                   style={{ color: "var(--accent-red)" }}
-                  title="Delete batch"
+                  title="ডিলিট"
                 >
                   <HiOutlineTrash size={16} />
                 </button>
@@ -292,7 +294,7 @@ export default function BatchListPage() {
                   href={`/batches/${batch._id}`}
                   className="btn btn-secondary btn-sm"
                 >
-                  Open Workspace <HiOutlineArrowRight size={14} />
+                  বিস্তারিত দেখুন <HiOutlineArrowRight size={14} />
                 </Link>
               </div>
             </div>

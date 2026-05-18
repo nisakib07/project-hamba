@@ -21,7 +21,7 @@ export default function LoadingSpinner() {
         }}
       />
       <p style={{ color: "var(--text-muted)", fontSize: "0.875rem" }}>
-        Loading...
+        লোড হচ্ছে...
       </p>
       <style jsx>{`
         @keyframes spin {

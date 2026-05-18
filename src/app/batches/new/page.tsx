@@ -53,13 +53,13 @@ export default function NewBatchPage() {
       });
       const json = await res.json();
       if (json.success) {
-        toast.success("Batch created successfully!");
+        toast.success("ব্যাচ সফলভাবে তৈরি হয়েছে!");
         router.push(`/batches/${json.data._id}`);
       } else {
-        toast.error(json.error || "Failed to create batch");
+        toast.error(json.error || "ব্যাচ তৈরি করতে সমস্যা হয়েছে");
       }
     } catch {
-      toast.error("Network error");
+      toast.error("নেটওয়ার্ক সমস্যা");
     } finally {
       setSubmitting(false);
     }
@@ -82,7 +82,7 @@ export default function NewBatchPage() {
           }}
         >
           <HiOutlineArrowLeft size={16} />
-          Back to Batches
+          ব্যাচ সমূহে ফিরুন
         </Link>
         <h1
           style={{
@@ -91,10 +91,10 @@ export default function NewBatchPage() {
             marginBottom: "0.35rem",
           }}
         >
-          Create New Batch
+          নতুন ব্যাচ তৈরি করুন
         </h1>
         <p style={{ color: "var(--text-muted)", fontSize: "0.9rem" }}>
-          Register a new cow purchase and slaughter batch
+          নতুন গরু ক্রয় ও জবাইয়ের ব্যাচ নিবন্ধন করুন
         </p>
       </div>
 
@@ -112,7 +112,7 @@ export default function NewBatchPage() {
               color: "var(--accent-green)",
             }}
           >
-            🐄 Basic Information
+            🐄 মৌলিক তথ্য
           </h3>
           <div
             style={{
@@ -122,19 +122,19 @@ export default function NewBatchPage() {
             }}
           >
             <div className="form-group">
-              <label className="form-label">Batch Name *</label>
+              <label className="form-label">ব্যাচের নাম *</label>
               <input
                 type="text"
                 name="batchName"
                 className="form-input"
-                placeholder="e.g., Cow #12 - Dhaka Market"
+                placeholder="যেমন: গরু #১২ - ঢাকা বাজার"
                 value={form.batchName}
                 onChange={handleChange}
                 required
               />
             </div>
             <div className="form-group">
-              <label className="form-label">Purchase Date *</label>
+              <label className="form-label">ক্রয়ের তারিখ *</label>
               <input
                 type="date"
                 name="purchaseDate"
@@ -145,12 +145,12 @@ export default function NewBatchPage() {
               />
             </div>
             <div className="form-group">
-              <label className="form-label">Total Meat (kg)</label>
+              <label className="form-label">মোট গোশত (কেজি)</label>
               <input
                 type="number"
                 name="totalMeatKg"
                 className="form-input"
-                placeholder="Total meat weight"
+                placeholder="মোট গোশতের ওজন"
                 value={form.totalMeatKg}
                 onChange={handleChange}
                 step="0.01"
@@ -173,7 +173,7 @@ export default function NewBatchPage() {
               color: "var(--accent-blue)",
             }}
           >
-            💰 Costs & Expenses
+            💰 খরচ সমূহ
           </h3>
           <div
             style={{
@@ -183,12 +183,12 @@ export default function NewBatchPage() {
             }}
           >
             <div className="form-group">
-              <label className="form-label">Buying Cost (৳) *</label>
+              <label className="form-label">ক্রয়মূল্য (৳) *</label>
               <input
                 type="number"
                 name="buyingCost"
                 className="form-input"
-                placeholder="Cow purchase price"
+                placeholder="গরু কেনার দাম"
                 value={form.buyingCost}
                 onChange={handleChange}
                 required
@@ -196,48 +196,48 @@ export default function NewBatchPage() {
               />
             </div>
             <div className="form-group">
-              <label className="form-label">Food Cost (৳)</label>
+              <label className="form-label">খাবার খরচ (৳)</label>
               <input
                 type="number"
                 name="foodCost"
                 className="form-input"
-                placeholder="Feed expenses"
+                placeholder="খাদ্য খরচ"
                 value={form.foodCost}
                 onChange={handleChange}
                 min="0"
               />
             </div>
             <div className="form-group">
-              <label className="form-label">Butcher Cost (৳)</label>
+              <label className="form-label">কসাই খরচ (৳)</label>
               <input
                 type="number"
                 name="butcherCost"
                 className="form-input"
-                placeholder="Slaughter fees"
+                placeholder="জবাই খরচ"
                 value={form.butcherCost}
                 onChange={handleChange}
                 min="0"
               />
             </div>
             <div className="form-group">
-              <label className="form-label">Transport Cost (৳)</label>
+              <label className="form-label">পরিবহন খরচ (৳)</label>
               <input
                 type="number"
                 name="transportCost"
                 className="form-input"
-                placeholder="Transport fees"
+                placeholder="পরিবহন ভাড়া"
                 value={form.transportCost}
                 onChange={handleChange}
                 min="0"
               />
             </div>
             <div className="form-group">
-              <label className="form-label">Other Expenses (৳)</label>
+              <label className="form-label">অন্যান্য খরচ (৳)</label>
               <input
                 type="number"
                 name="otherExpenses"
                 className="form-input"
-                placeholder="Any other expenses"
+                placeholder="অন্য কোনো খরচ"
                 value={form.otherExpenses}
                 onChange={handleChange}
                 min="0"
@@ -259,7 +259,7 @@ export default function NewBatchPage() {
               color: "var(--accent-purple)",
             }}
           >
-            🏷️ Meat Pricing
+            🏷️ গোশতের দাম
           </h3>
           <div
             style={{
@@ -269,12 +269,12 @@ export default function NewBatchPage() {
             }}
           >
             <div className="form-group">
-              <label className="form-label">Base Meat Price/kg (৳) *</label>
+              <label className="form-label">প্রতি কেজি মাংসের দাম (৳) *</label>
               <input
                 type="number"
                 name="baseMeatPricePerKg"
                 className="form-input"
-                placeholder="Default selling price per kg"
+                placeholder="প্রতি কেজি বিক্রয় মূল্য"
                 value={form.baseMeatPricePerKg}
                 onChange={handleChange}
                 required
@@ -283,7 +283,7 @@ export default function NewBatchPage() {
             </div>
           </div>
           <p style={{ fontSize: "0.78rem", color: "var(--text-muted)", marginTop: "0.75rem" }}>
-            💡 Byproduct sales (chamra, vuri, pa) can be added from the Byproducts tab after creating the batch.
+            💡 চামড়া, ভুঁড়ি, পা ইত্যাদির বিক্রি ব্যাচ তৈরির পরে যোগ করতে পারবেন।
           </p>
         </div>
 
@@ -300,13 +300,13 @@ export default function NewBatchPage() {
               color: "var(--accent-yellow)",
             }}
           >
-            📝 Notes
+            📝 নোট
           </h3>
           <div className="form-group" style={{ marginBottom: 0 }}>
             <textarea
               name="notes"
               className="form-input"
-              placeholder="Optional notes about this batch..."
+              placeholder="এই ব্যাচ সম্পর্কে কোনো নোট (ঐচ্ছিক)..."
               value={form.notes}
               onChange={handleChange}
               rows={3}
@@ -323,10 +323,10 @@ export default function NewBatchPage() {
             disabled={submitting}
             style={{ flex: 1 }}
           >
-            {submitting ? "Creating..." : "🐄 Create Batch"}
+            {submitting ? "তৈরি হচ্ছে..." : "🐄 ব্যাচ তৈরি করুন"}
           </button>
           <Link href="/batches" className="btn btn-secondary">
-            Cancel
+            বাতিল
           </Link>
         </div>
       </form>

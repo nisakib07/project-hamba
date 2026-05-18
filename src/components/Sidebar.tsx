@@ -13,9 +13,9 @@ import {
 import { GiCow } from "react-icons/gi";
 
 const navItems = [
-  { href: "/", label: "Dashboard", icon: HiOutlineHome },
-  { href: "/batches", label: "All Batches", icon: HiOutlineCollection },
-  { href: "/batches/new", label: "New Batch", icon: HiOutlinePlusCircle },
+  { href: "/", label: "ড্যাশবোর্ড", icon: HiOutlineHome },
+  { href: "/batches", label: "ব্যাচ সমূহ", icon: HiOutlineCollection },
+  { href: "/batches/new", label: "নতুন ব্যাচ", icon: HiOutlinePlusCircle },
 ];
 
 export default function Sidebar() {
@@ -24,25 +24,21 @@ export default function Sidebar() {
 
   return (
     <>
-      {/* Mobile menu button */}
-      <button
-        className="btn-icon"
-        onClick={() => setIsOpen(!isOpen)}
-        style={{
-          position: "fixed",
-          top: "1rem",
-          left: "1rem",
-          zIndex: 50,
-          display: "none",
-        }}
-        id="mobile-menu-btn"
-      >
-        {isOpen ? <HiOutlineX size={22} /> : <HiOutlineMenu size={22} />}
-      </button>
+      {/* Mobile Top Bar */}
+      <div className="mobile-top-bar no-print" style={{ display: "none" }}>
+        <Link href="/" style={{ display: "flex", alignItems: "center", gap: "0.5rem", textDecoration: "none", color: "var(--text-primary)", fontWeight: 700 }}>
+          <GiCow size={22} style={{ color: "var(--accent-green)" }} />
+          গরু ব্যাচ
+        </Link>
+        <button className="btn-icon" onClick={() => setIsOpen(!isOpen)}>
+          {isOpen ? <HiOutlineX size={22} /> : <HiOutlineMenu size={22} />}
+        </button>
+      </div>
 
       {/* Overlay for mobile */}
       {isOpen && (
         <div
+          className="no-print"
           style={{
             position: "fixed",
             inset: 0,
@@ -87,7 +83,7 @@ export default function Sidebar() {
             </div>
             <div>
               <div style={{ fontWeight: 700, fontSize: "0.95rem" }}>
-                Cow Batch
+                গরু ব্যাচ
               </div>
               <div
                 style={{
@@ -96,7 +92,7 @@ export default function Sidebar() {
                   fontWeight: 500,
                 }}
               >
-                Profit Manager
+                লাভ ম্যানেজার
               </div>
             </div>
           </Link>
@@ -115,7 +111,7 @@ export default function Sidebar() {
               letterSpacing: "0.08em",
             }}
           >
-            Menu
+            মেনু
           </div>
           {navItems.map((item) => {
             const isActive =
@@ -144,15 +140,26 @@ export default function Sidebar() {
             color: "var(--text-muted)",
           }}
         >
-          <div>Cow Batch Profit Manager</div>
-          <div style={{ marginTop: "0.25rem", opacity: 0.7 }}>v1.0.0 • MVP</div>
+          <div>গরু ব্যাচ লাভ ম্যানেজার</div>
+          <div style={{ marginTop: "0.25rem", opacity: 0.7 }}>v1.0.0</div>
         </div>
       </aside>
 
       <style jsx>{`
         @media (max-width: 768px) {
-          #mobile-menu-btn {
+          .mobile-top-bar {
             display: flex !important;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 1.25rem;
+            background: rgba(26, 35, 50, 0.95);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border-color);
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 30;
           }
         }
       `}</style>

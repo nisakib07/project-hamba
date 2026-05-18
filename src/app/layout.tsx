@@ -4,8 +4,8 @@ import { Toaster } from "react-hot-toast";
 import Sidebar from "@/components/Sidebar";
 
 export const metadata: Metadata = {
-  title: "Cow Batch Profit Manager",
-  description: "Manage profit and expenses for livestock meat business operations. Track profitability per cow batch with full transparency.",
+  title: "গরু ব্যাচ লাভ ম্যানেজার",
+  description: "গরুর গোশত ব্যবসার লাভ-ক্ষতি হিসাব। প্রতিটি ব্যাচের খরচ, বিক্রি ও মুনাফা ট্র্যাক করুন।",
 };
 
 export default function RootLayout({
@@ -14,7 +14,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="bn">
       <body>
         <Toaster
           position="top-right"

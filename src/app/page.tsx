@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import {
   HiOutlineTrendingUp,
@@ -10,9 +10,10 @@ import {
   HiOutlineCash,
   HiOutlineExclamationCircle,
   HiOutlineArrowRight,
+  HiOutlineSearch,
 } from "react-icons/hi";
+import { useRouter } from "next/navigation";
 import LoadingSpinner from "@/components/LoadingSpinner";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 
 interface BatchSummary {
   _id: string;
@@ -44,16 +45,30 @@ function formatCurrency(amount: number): string {
 }
 
 export default function DashboardPage() {
+  const router = useRouter();
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  
+  // Search state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [customers, setCustomers] = useState<string[]>([]);
+  const [filteredCustomers, setFilteredCustomers] = useState<string[]>([]);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const searchRef = useRef<HTMLDivElement>(null);
 
   const fetchDashboard = useCallback(async () => {
     try {
-      const res = await fetch("/api/dashboard");
-      const json = await res.json();
-      if (json.success) setData(json.data);
+      const [dashRes, custRes] = await Promise.all([
+        fetch("/api/dashboard"),
+        fetch("/api/customers")
+      ]);
+      const dashJson = await dashRes.json();
+      const custJson = await custRes.json();
+      
+      if (dashJson.success) setData(dashJson.data);
+      if (custJson.success) setCustomers(custJson.data);
     } catch (err) {
-      console.error("Failed to load dashboard:", err);
+      console.error("Failed to load dashboard data:", err);
     } finally {
       setLoading(false);
     }
@@ -62,6 +77,25 @@ export default function DashboardPage() {
   useEffect(() => {
     fetchDashboard();
   }, [fetchDashboard]);
+
+  useEffect(() => {
+    if (searchQuery.trim() === "") {
+      setFilteredCustomers([]);
+    } else {
+      const q = searchQuery.toLowerCase();
+      setFilteredCustomers(customers.filter(c => c.toLowerCase().includes(q)));
+    }
+  }, [searchQuery, customers]);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+        setShowDropdown(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   if (loading) return <LoadingSpinner />;
 
@@ -108,82 +142,82 @@ export default function DashboardPage() {
 
   return (
     <div className="animate-fade-in">
-      {/* Header */}
-      <div style={{ marginBottom: "2rem" }}>
-        <h1 style={{ fontSize: "1.75rem", fontWeight: 800, marginBottom: "0.35rem" }}>
-          Dashboard
-        </h1>
-        <p style={{ color: "var(--text-muted)", fontSize: "0.9rem" }}>
-          Overview of your livestock business performance
-        </p>
-      </div>
-
-      {/* Stat Cards */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
-          gap: "1.25rem",
-          marginBottom: "2rem",
-        }}
-      >
-        {statCards.map((card, i) => (
-          <div key={i} className={`stat-card ${card.color}`}>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "flex-start",
-              }}
-            >
-              <div>
-                <div
-                  style={{
-                    fontSize: "0.8rem",
-                    fontWeight: 500,
-                    opacity: 0.85,
-                    marginBottom: "0.5rem",
-                  }}
-                >
-                  {card.label}
-                </div>
-                <div style={{ fontSize: "1.6rem", fontWeight: 800 }}>
-                  {card.value}
-                </div>
-                <div
-                  style={{
-                    fontSize: "0.75rem",
-                    opacity: 0.7,
-                    marginTop: "0.35rem",
-                  }}
-                >
-                  {card.sub}
-                </div>
-              </div>
-              <card.icon size={28} style={{ opacity: 0.7 }} />
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Profit Chart */}
-      {data.batchSummaries.length > 1 && (
-        <div className="glass-card" style={{ padding: "1.5rem", marginBottom: "1.25rem" }}>
-          <h2 style={{ fontSize: "1.05rem", fontWeight: 700, marginBottom: "1.25rem" }}>📊 Profit by Batch</h2>
-          <ResponsiveContainer width="100%" height={250}>
-            <BarChart data={data.batchSummaries.slice(0, 8).map(b => ({ name: b.batchName.length > 12 ? b.batchName.slice(0, 12) + "…" : b.batchName, profit: b.profit }))} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
-              <XAxis dataKey="name" tick={{ fill: "#94a3b8", fontSize: 12 }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: "#94a3b8", fontSize: 12 }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `৳${(v / 1000).toFixed(0)}k`} />
-              <Tooltip contentStyle={{ background: "#1a2332", border: "1px solid #1e3a5f", borderRadius: "10px", color: "#f1f5f9" }} formatter={(value: unknown) => [formatCurrency(Number(value)), "Profit"]} />
-              <Bar dataKey="profit" radius={[6, 6, 0, 0]}>
-                {data.batchSummaries.slice(0, 8).map((b, i) => (
-                  <Cell key={i} fill={b.profit >= 0 ? "#10b981" : "#ef4444"} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+      {/* Header with Search */}
+      <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "flex-end", gap: "1rem", marginBottom: "2rem" }}>
+        <div>
+          <h1 style={{ fontSize: "1.75rem", fontWeight: 800, marginBottom: "0.35rem" }}>
+            ড্যাশবোর্ড
+          </h1>
+          <p style={{ color: "var(--text-muted)", fontSize: "0.9rem" }}>
+            আপনার গরুর গোশত ব্যবসার সার্বিক চিত্র
+          </p>
         </div>
-      )}
+
+        <div ref={searchRef} style={{ position: "relative", width: "100%", maxWidth: "350px", zIndex: 10 }}>
+          <div style={{ position: "relative" }}>
+            <HiOutlineSearch 
+              style={{ position: "absolute", left: "1rem", top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)" }} 
+              size={18} 
+            />
+            <input
+              type="text"
+              className="form-input"
+              placeholder="কাস্টমারের নাম খুঁজুন..."
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setShowDropdown(true);
+              }}
+              onFocus={() => setShowDropdown(true)}
+              style={{ paddingLeft: "2.5rem", marginBottom: 0 }}
+            />
+          </div>
+          
+          {showDropdown && searchQuery && (
+            <div className="glass-card" style={{ 
+              position: "absolute", 
+              top: "100%", 
+              left: 0, 
+              right: 0, 
+              marginTop: "0.5rem", 
+              maxHeight: "250px", 
+              overflowY: "auto",
+              boxShadow: "0 10px 25px rgba(0,0,0,0.5)"
+            }}>
+              {filteredCustomers.length > 0 ? (
+                <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
+                  {filteredCustomers.map((customer, i) => (
+                    <li key={i}>
+                      <button
+                        onClick={() => router.push(`/customers/${encodeURIComponent(customer)}`)}
+                        style={{
+                          width: "100%",
+                          textAlign: "left",
+                          padding: "0.85rem 1rem",
+                          background: "transparent",
+                          border: "none",
+                          borderBottom: i < filteredCustomers.length - 1 ? "1px solid var(--border-color)" : "none",
+                          color: "var(--text-primary)",
+                          cursor: "pointer",
+                          transition: "background 0.2s"
+                        }}
+                        onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.05)")}
+                        onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                      >
+                        {customer}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <div style={{ padding: "1rem", color: "var(--text-muted)", textAlign: "center", fontSize: "0.9rem" }}>
+                  কোনো কাস্টমার পাওয়া যায়নি
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* Active Batches & Quick Stats */}
       <div
