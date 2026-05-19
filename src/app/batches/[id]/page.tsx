@@ -375,8 +375,8 @@ useEffect(() => {
             <span className={`badge ${batch.status === "active" ? "badge-green" : "badge-blue"}`} style={{ fontSize: "0.7rem", padding: "0.15rem 0.5rem" }}>{statusBn[batch.status] || batch.status}</span>
           </div>
           <div style={{ display: "flex", gap: "0.5rem" }}>
-            {tab === "sales" && <button className="btn-icon" onClick={handleDownloadPdf} style={{ padding: "0.25rem", color: "var(--text-primary)" }}><HiOutlinePrinter size={16} /></button>}
-            <button className="btn-icon" onClick={() => setModal("editBatch")} style={{ padding: "0.25rem", color: "var(--text-primary)" }}><HiOutlinePencil size={16} /></button>
+            {tab === "sales" && <button className="btn-icon" onClick={handleDownloadPdf} style={{ padding: "0.25rem", color: "var(--text-primary)" }}><HiOutlinePrinter size={iconSize} /></button>}
+            <button className="btn-icon" onClick={() => setModal("editBatch")} style={{ padding: "0.25rem", color: "var(--text-primary)" }}><HiOutlinePencil size={iconSize} /></button>
           </div>
         </div>
         <div className="tab-nav">
