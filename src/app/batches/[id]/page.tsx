@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import PullToRefresh from "@/components/PullToRefresh";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { HiOutlineArrowLeft, HiOutlinePencil, HiOutlinePrinter, HiOutlineSearch } from "react-icons/hi";
@@ -83,6 +84,12 @@ export default function BatchDetailPage() {
   const [showSuggestions, setShowSuggestions] = useState<"meat"|"byp"|"">("")
   // sale type for unified modal: "meat" or byproduct types
   const [saleType, setSaleType] = useState("meat");
+  const [fabOpen, setFabOpen] = useState(false);
+
+  // Swipe gesture refs
+  const touchStartX = useRef(0);
+  const touchStartY = useRef(0);
+  const tabKeys = ["overview", "sales", "expenses"];
 
   // Form states
   const [meatForm, setMeatForm] = useState({ customerName: "", kgQuantity: "", pricePerKg: "", paidAmount: "", date: new Date().toISOString().split("T")[0] });
@@ -226,6 +233,7 @@ export default function BatchDetailPage() {
   ];
 
   return (
+    <PullToRefresh onRefresh={fetchData}>
     <div className="animate-fade-in">
       {/* Print-only Header */}
       <div className="print-header">
@@ -234,17 +242,31 @@ export default function BatchDetailPage() {
         <p style={{ fontSize: "0.85rem" }}>জবাইয়ের তারিখ: {new Date(batch.purchaseDate).toLocaleDateString("bn-BD", { day: "numeric", month: "long", year: "numeric" })}</p>
       </div>
 
-      {/* Header */}
-      <Link href="/batches" className="no-print" style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem", color: "var(--text-muted)", textDecoration: "none", fontSize: "0.85rem", marginBottom: "0.75rem" }}>
+      {/* Mobile Sticky Header */}
+      <div className="sticky-batch-header">
+        <div className="batch-title">
+          <Link href="/batches" style={{ color: "var(--text-muted)", display: "flex" }}><HiOutlineArrowLeft size={18} /></Link>
+          {batch.batchName}
+          <span className={`badge ${batch.status === "active" ? "badge-green" : "badge-blue"}`} style={{ fontSize: "0.7rem", padding: "0.15rem 0.5rem" }}>{statusBn[batch.status] || batch.status}</span>
+        </div>
+        <div className="tab-nav">
+          {tabs.map(t => (
+            <button key={t.key} className={`tab-btn ${tab === t.key ? "active" : ""}`} onClick={() => setTab(t.key)}>{t.label}</button>
+          ))}
+        </div>
+      </div>
+
+      {/* Desktop Header */}
+      <Link href="/batches" className="no-print desktop-batch-header" style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem", color: "var(--text-muted)", textDecoration: "none", fontSize: "0.85rem", marginBottom: "0.75rem" }}>
         <HiOutlineArrowLeft size={16} /> ব্যাচ সমূহে ফিরুন
       </Link>
-      <div className="no-print" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1.5rem", flexWrap: "wrap", gap: "0.75rem" }}>
+      <div className="no-print desktop-batch-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1.5rem", flexWrap: "wrap", gap: "0.75rem" }}>
         <div>
           <h1 style={{ fontSize: "1.6rem", fontWeight: 800, marginBottom: "0.25rem" }}>{batch.batchName}</h1>
           <p style={{ color: "var(--text-muted)", fontSize: "0.85rem" }}>ক্রয়ের তারিখ: {new Date(batch.purchaseDate).toLocaleDateString("bn-BD", { day: "numeric", month: "short", year: "numeric" })}</p>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-          <button className="btn btn-secondary btn-sm" onClick={() => {
+          {tab === "sales" && <button className="btn btn-secondary btn-sm" onClick={() => {
             const sidebar = document.querySelector('aside');
             const mobileBar = document.querySelector('.mobile-top-bar');
             if (sidebar) (sidebar as HTMLElement).style.cssText = 'display:none!important;visibility:hidden!important;';
@@ -256,19 +278,32 @@ export default function BatchDetailPage() {
                 if (mobileBar) (mobileBar as HTMLElement).style.cssText = '';
               }, 100);
             });
-          }}><HiOutlinePrinter size={15} /> প্রিন্ট</button>
+          }}><HiOutlinePrinter size={15} /> প্রিন্ট</button>}
           <button className="btn btn-secondary btn-sm" onClick={() => setModal("editBatch")}><HiOutlinePencil size={15} /> ইডিট করুন</button>
           <span className={`badge ${batch.status === "active" ? "badge-green" : "badge-blue"}`} style={{ fontSize: "0.85rem", padding: "0.35rem 1rem" }}>{statusBn[batch.status] || batch.status}</span>
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="tab-nav" style={{ marginBottom: "1.5rem" }}>
+      {/* Desktop Tabs */}
+      <div className="tab-nav desktop-tab-nav" style={{ marginBottom: "1.5rem" }}>
         {tabs.map(t => (
           <button key={t.key} className={`tab-btn ${tab === t.key ? "active" : ""}`} onClick={() => setTab(t.key)}>{t.label}</button>
         ))}
       </div>
 
+      {/* Swipeable content area */}
+      <div
+        onTouchStart={e => { touchStartX.current = e.touches[0].clientX; touchStartY.current = e.touches[0].clientY; }}
+        onTouchEnd={e => {
+          const dx = e.changedTouches[0].clientX - touchStartX.current;
+          const dy = e.changedTouches[0].clientY - touchStartY.current;
+          if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+            const idx = tabKeys.indexOf(tab);
+            if (dx < 0 && idx < tabKeys.length - 1) setTab(tabKeys[idx + 1]);
+            if (dx > 0 && idx > 0) setTab(tabKeys[idx - 1]);
+          }
+        }}
+      >
       {/* OVERVIEW TAB */}
       {tab === "overview" && (
         <div className="animate-fade-in">
@@ -386,7 +421,9 @@ export default function BatchDetailPage() {
             {filteredMeat.length === 0 ? (
               <div style={{ padding: "1.5rem", textAlign: "center", color: "var(--text-muted)", fontSize: "0.85rem" }}>কোনো গোশত বিক্রি নেই</div>
             ) : (
-              <table className="data-table">
+              <>
+              {/* Desktop Table */}
+              <table className="data-table desktop-table">
                 <thead><tr><th>ক্রেতা</th><th>কেজি</th><th className="no-print">দাম/কেজি</th><th>মোট</th><th>পেইড</th><th>বাকি</th><th className="no-print">তারিখ</th><th className="no-print">অ্যাকশন</th></tr></thead>
                 <tbody>
                   {filteredMeat.map(s => (
@@ -415,6 +452,34 @@ export default function BatchDetailPage() {
                   <td className="no-print"></td><td className="no-print"></td>
                 </tr></tfoot>
               </table>
+              {/* Mobile Cards */}
+              <div className="mobile-sale-cards">
+                {filteredMeat.map(s => (
+                  <div key={s._id} className="sale-card">
+                    <div className="sale-card-header">
+                      <span className="sale-card-name">{s.customerName}</span>
+                      <span className="sale-card-date">{new Date(s.date).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}</span>
+                    </div>
+                    <div className="sale-card-grid">
+                      <div className="sale-card-stat"><div className="sale-card-stat-label">মোট</div><div className="sale-card-stat-value">{fmt(s.totalPrice)}</div></div>
+                      <div className="sale-card-stat"><div className="sale-card-stat-label">পেইড</div><div className="sale-card-stat-value" style={{ color: "var(--accent-green)" }}>{fmt(s.paidAmount)}</div></div>
+                      <div className="sale-card-stat"><div className="sale-card-stat-label">বাকি</div><div className="sale-card-stat-value" style={{ color: s.dueAmount > 0 ? "var(--accent-red)" : "var(--accent-green)" }}>{fmt(s.dueAmount)}</div></div>
+                    </div>
+                    <div className="sale-card-footer">
+                      <span className="sale-card-kg">{s.kgQuantity} কেজি × {fmt(s.pricePerKg)}</span>
+                      <div className="action-group">
+                        {s.dueAmount > 0 && <button className="btn-collect" onClick={() => { setCollectTarget({ id: s._id, type: "meat", name: s.customerName, total: s.totalPrice, paid: s.paidAmount, due: s.dueAmount }); setCollectAmt(""); }}>আদায়</button>}
+                        <button className="btn-icon" onClick={() => setDeleteTarget({ id: s._id, type: "meat", name: s.customerName })} style={{ color: "var(--accent-red)", fontSize: "0.85rem" }}>🗑</button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                <div style={{ padding: "0.5rem", background: "rgba(16,185,129,0.06)", borderRadius: "10px", display: "flex", justifyContent: "space-between", fontSize: "0.8rem", fontWeight: 700 }}>
+                  <span>মোট: {filteredMeat.reduce((s, m) => s + m.kgQuantity, 0).toFixed(1)} কেজি</span>
+                  <span>{fmt(filteredMeat.reduce((s, m) => s + m.totalPrice, 0))}</span>
+                </div>
+              </div>
+              </>
             )}
           </div>
 
@@ -490,6 +555,19 @@ export default function BatchDetailPage() {
               </table>
             )}
           </div>
+        </div>
+      )}
+      </div>{/* end swipe area */}
+
+      {/* FAB for mobile */}
+      {(tab === "sales" || tab === "expenses") && (
+        <div className="fab-container">
+          <div className={`fab-menu ${fabOpen ? "open" : ""}`}>
+            <button className="fab-menu-item" onClick={() => { setSaleType("meat"); setModal("sale"); setFabOpen(false); }}>🥩 গোশত বিক্রি</button>
+            <button className="fab-menu-item" onClick={() => { setSaleType("chamra"); setModal("sale"); setFabOpen(false); }}>🧾 চামড়া/ভুঁড়ি/পা</button>
+            <button className="fab-menu-item" onClick={() => { setModal("expense"); setFabOpen(false); }}>💸 খরচ যোগ</button>
+          </div>
+          <button className={`fab-btn ${fabOpen ? "open" : ""}`} onClick={() => setFabOpen(!fabOpen)}>+</button>
         </div>
       )}
 
@@ -623,5 +701,6 @@ export default function BatchDetailPage() {
         <p style={{ fontSize: "0.8rem", marginTop: "0.5rem", opacity: 0.7 }}>এই কাজটি ফেরত নেওয়া যাবে না।</p>
       </ConfirmModal>
     </div>
+    </PullToRefresh>
   );
 }

@@ -240,7 +240,9 @@ export default function CustomerDashboard({ params }: { params: Promise<{ name: 
                 <div className="empty-state-text">কোনো লেনদেন পাওয়া যায়নি</div>
              </div>
           ) : (
-            <table className="data-table" style={{ width: "100%", minWidth: "600px", borderCollapse: "collapse" }}>
+            <>
+            {/* Desktop Table */}
+            <table className="data-table desktop-table" style={{ width: "100%", minWidth: "600px", borderCollapse: "collapse" }}>
               <thead>
                 <tr>
                   <th style={{ textAlign: "left", padding: "1rem" }}>তারিখ</th>
@@ -279,6 +281,29 @@ export default function CustomerDashboard({ params }: { params: Promise<{ name: 
                 ))}
               </tbody>
             </table>
+            {/* Mobile Cards */}
+            <div className="mobile-sale-cards">
+              {data.history.map((item) => (
+                <div key={item._id} className="sale-card">
+                  <div className="sale-card-header">
+                    <div>
+                      <Link href={`/batches/${item.batchId}`} style={{ color: "var(--accent-blue)", textDecoration: "none", fontWeight: 600, fontSize: "0.9rem" }}>
+                        {item.batchName}
+                      </Link>
+                      <span className="badge badge-blue" style={{ marginLeft: "0.5rem", fontSize: "0.65rem" }}>{typeBn[item.type] || item.type}</span>
+                    </div>
+                    <span className="sale-card-date">{new Date(item.date).toLocaleDateString("bn-BD")}</span>
+                  </div>
+                  <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: "0.5rem" }}>{item.detail}</div>
+                  <div className="sale-card-grid">
+                    <div className="sale-card-stat"><div className="sale-card-stat-label">মোট</div><div className="sale-card-stat-value">{formatCurrency(item.total)}</div></div>
+                    <div className="sale-card-stat"><div className="sale-card-stat-label">পরিশোধ</div><div className="sale-card-stat-value" style={{ color: "var(--accent-green)" }}>{formatCurrency(item.paid)}</div></div>
+                    <div className="sale-card-stat"><div className="sale-card-stat-label">বকেয়া</div><div className="sale-card-stat-value" style={{ color: item.due > 0 ? "var(--accent-red)" : "var(--accent-green)" }}>{formatCurrency(item.due)}</div></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            </>
           )}
         </div>
 

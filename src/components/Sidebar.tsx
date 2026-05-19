@@ -146,22 +146,7 @@ export default function Sidebar() {
       </aside>
 
       <style jsx>{`
-        @media (max-width: 768px) {
-          .mobile-top-bar {
-            display: flex !important;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0.75rem 1.25rem;
-            background: rgba(26, 35, 50, 0.95);
-            backdrop-filter: blur(10px);
-            border-bottom: 1px solid var(--border-color);
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            z-index: 30;
-          }
-        }
+        /* Mobile top bar hidden - replaced by BottomNav */
       `}</style>
     </>
   );

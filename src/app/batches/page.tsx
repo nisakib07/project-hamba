@@ -9,6 +9,7 @@ import {
   HiOutlineTrash,
 } from "react-icons/hi";
 import LoadingSpinner from "@/components/LoadingSpinner";
+import PullToRefresh from "@/components/PullToRefresh";
 import toast from "react-hot-toast";
 
 interface Batch {
@@ -74,6 +75,7 @@ export default function BatchListPage() {
   if (loading) return <LoadingSpinner />;
 
   return (
+    <PullToRefresh onRefresh={fetchBatches}>
     <div className="animate-fade-in">
       {/* Header */}
       <div
@@ -302,5 +304,6 @@ export default function BatchListPage() {
         </div>
       )}
     </div>
+    </PullToRefresh>
   );
 }

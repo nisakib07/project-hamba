@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { Toaster } from "react-hot-toast";
 import Sidebar from "@/components/Sidebar";
+import BottomNav from "@/components/BottomNav";
 
 export const metadata: Metadata = {
   title: "গরু ব্যাচ লাভ ম্যানেজার",
@@ -45,6 +46,7 @@ export default function RootLayout({
         <main className="main-content">
           {children}
         </main>
+        <BottomNav />
       </body>
     </html>
   );

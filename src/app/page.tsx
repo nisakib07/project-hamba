@@ -14,6 +14,7 @@ import {
 } from "react-icons/hi";
 import { useRouter } from "next/navigation";
 import LoadingSpinner from "@/components/LoadingSpinner";
+import PullToRefresh from "@/components/PullToRefresh";
 
 interface BatchSummary {
   _id: string;
@@ -140,7 +141,11 @@ export default function DashboardPage() {
     },
   ];
 
+  // Quick action data
+  const latestActive = data.batchSummaries.find(b => b.status === "active");
+
   return (
+    <PullToRefresh onRefresh={fetchDashboard}>
     <div className="animate-fade-in">
       {/* Header with Search */}
       <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "flex-end", gap: "1rem", marginBottom: "2rem" }}>
@@ -217,6 +222,35 @@ export default function DashboardPage() {
             </div>
           )}
         </div>
+      </div>
+
+      {/* Quick Actions - Mobile Only */}
+      <div className="quick-actions">
+        {latestActive && (
+          <Link href={`/batches/${latestActive._id}`} className="quick-action-card">
+            <div className="quick-action-icon" style={{ background: "rgba(16,185,129,0.15)" }}>🐄</div>
+            <div>
+              <div className="quick-action-label">{latestActive.batchName}</div>
+              <div className="quick-action-sub">সর্বশেষ ব্যাচ</div>
+            </div>
+          </Link>
+        )}
+        <Link href="/batches/new" className="quick-action-card">
+          <div className="quick-action-icon" style={{ background: "rgba(59,130,246,0.15)" }}>➕</div>
+          <div>
+            <div className="quick-action-label">নতুন ব্যাচ</div>
+            <div className="quick-action-sub">তৈরি করুন</div>
+          </div>
+        </Link>
+        {data.totalDue > 0 && (
+          <Link href="/" className="quick-action-card" style={{ gridColumn: "1 / -1" }}>
+            <div className="quick-action-icon" style={{ background: "rgba(245,158,11,0.15)" }}>💳</div>
+            <div>
+              <div className="quick-action-label">মোট বাকি: {formatCurrency(data.totalDue)}</div>
+              <div className="quick-action-sub">{formatCurrency(data.totalPaid)} আদায় হয়েছে</div>
+            </div>
+          </Link>
+        )}
       </div>
 
       {/* Active Batches & Quick Stats */}
@@ -470,5 +504,6 @@ export default function DashboardPage() {
         </div>
       </div>
     </div>
+    </PullToRefresh>
   );
 }
