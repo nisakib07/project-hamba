@@ -95,6 +95,15 @@ export default function BatchDetailPage() {
   const [bypForm, setBypForm] = useState({ itemType: "chamra", quantity: "1", price: "", buyerName: "", paidAmount: "", date: new Date().toISOString().split("T")[0] });
   const [expForm, setExpForm] = useState({ expenseType: "food", amount: "", note: "", date: new Date().toISOString().split("T")[0] });
   const [editForm, setEditForm] = useState({ batchName: "", purchaseDate: "", buyingCost: "", foodCost: "", butcherCost: "", transportCost: "", otherExpenses: "", baseMeatPricePerKg: "", totalMeatKg: "", status: "active", notes: "" });
+// Add this near your other useRef/useState at the top of the component
+const [iconSize, setIconSize] = useState(20);
+
+useEffect(() => {
+  const update = () => setIconSize(window.innerWidth < 768 ? 50 : 15);
+  update();
+  window.addEventListener("resize", update);
+  return () => window.removeEventListener("resize", update);
+}, []);
 
   const fetchData = useCallback(async () => {
     try {
@@ -387,8 +396,14 @@ export default function BatchDetailPage() {
           <p style={{ color: "var(--text-muted)", fontSize: "0.85rem" }}>ক্রয়ের তারিখ: {new Date(batch.purchaseDate).toLocaleDateString("bn-BD", { day: "numeric", month: "short", year: "numeric" })}</p>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-          {tab === "sales" && <button className="btn btn-secondary btn-sm" onClick={handleDownloadPdf}><HiOutlinePrinter size={15} /> PDF ডাউনলোড</button>}
-          <button className="btn btn-secondary btn-sm" onClick={() => setModal("editBatch")}><HiOutlinePencil size={15} /> ইডিট করুন</button>
+          {tab === "sales" && <button className="btn btn-secondary btn-sm" onClick={handleDownloadPdf}>
+  <HiOutlinePrinter size={iconSize} /> PDF ডাউনলোড
+</button>
+}
+          <button className="btn btn-secondary btn-sm" onClick={() => setModal("editBatch")}>
+  <HiOutlinePencil size={iconSize} /> ইডিট করুন
+</button>
+
           <span className={`badge ${batch.status === "active" ? "badge-green" : "badge-blue"}`} style={{ fontSize: "0.85rem", padding: "0.35rem 1rem" }}>{statusBn[batch.status] || batch.status}</span>
         </div>
       </div>
