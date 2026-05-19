@@ -82,7 +82,6 @@ export default function BatchDetailPage() {
   const [deleteTarget, setDeleteTarget] = useState<{id:string,type:string,name:string}|null>(null);
   const [customerNames, setCustomerNames] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState<"meat"|"byp"|"">("")
-  // sale type for unified modal: "meat" or byproduct types
   const [saleType, setSaleType] = useState("meat");
   const [fabOpen, setFabOpen] = useState(false);
 
@@ -114,7 +113,6 @@ export default function BatchDetailPage() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  // Fetch customer names for autocomplete
   useEffect(() => {
     fetch("/api/customers").then(r => r.json()).then(j => { if (j.success) setCustomerNames(j.data); }).catch(() => {});
   }, []);
@@ -129,7 +127,7 @@ export default function BatchDetailPage() {
         foodCost: String(batch.foodCost),
         butcherCost: String(batch.butcherCost),
         transportCost: String(batch.transportCost),
-        otherExpenses: String(batch.otherExpenses),
+        otherExpenses: String(batch.otherExpenses), 
         baseMeatPricePerKg: String(batch.baseMeatPricePerKg),
         totalMeatKg: String(batch.totalMeatKg),
         status: batch.status,
@@ -207,24 +205,16 @@ export default function BatchDetailPage() {
     else toast.error(json.error);
   };
 
-  // Filtered lists (unified search)
   const filteredMeat = meatSales.filter(s => s.customerName.toLowerCase().includes(searchSales.toLowerCase()));
   const filteredByp = byproducts.filter(b => (b.buyerName || "").toLowerCase().includes(searchSales.toLowerCase()));
 
-  // Helper: get filtered customer suggestions
   const getSuggestions = (query: string) => {
     if (!query || query.trim().length < 1) return [];
-    
-    // Robust Bengali search: ignore spaces, case, and zero-width joiners
     const sanitize = (str: string) => str.toLowerCase().replace(/[\s\u200C\u200D]+/g, '');
     const sanitizedQuery = sanitize(query);
-    
-    return customerNames
-      .filter(n => sanitize(n).includes(sanitizedQuery))
-      .slice(0, 5);
+    return customerNames.filter(n => sanitize(n).includes(sanitizedQuery)).slice(0, 5);
   };
 
-  // All dues combined
   const allDues = [
     ...meatSales.filter(s => s.dueAmount > 0).map(s => ({ id: s._id, name: s.customerName, type: "Meat", total: s.totalPrice, paid: s.paidAmount, due: s.dueAmount })),
     ...byproducts.filter(b => b.dueAmount > 0).map(b => ({ id: b._id, name: b.buyerName || b.itemType, type: b.itemType, total: b.total, paid: b.paidAmount, due: b.dueAmount })),
@@ -240,40 +230,114 @@ export default function BatchDetailPage() {
 
   const handleDownloadPdf = async () => {
     const toastId = toast.loading("PDF তৈরি হচ্ছে... অনুগ্রহ করে অপেক্ষা করুন");
-    
+
     try {
-      // Add a class to body to apply print-like styles
       document.body.classList.add("pdf-exporting");
-      
-      // Wait a tick for styles to apply visually
       await new Promise(resolve => setTimeout(resolve, 150));
-      
-      // Get the main content area
-      const element = document.querySelector(".main-content") || document.body;
-      
-      const html2canvas = (await import("html2canvas")).default;
-      const { jsPDF } = await import("jspdf");
-      
-      const canvas = await html2canvas(element as HTMLElement, {
-        scale: 2, // Higher quality
-        useCORS: true,
-        logging: false,
-        backgroundColor: "#ffffff"
-      });
-      
-      const imgData = canvas.toDataURL("image/jpeg", 0.95);
-      const pdf = new jsPDF({
-        orientation: "portrait",
-        unit: "mm",
-        format: "a4"
-      });
-      
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-      
-      pdf.addImage(imgData, "JPEG", 0, 0, pdfWidth, pdfHeight);
-      pdf.save(`${batch?.batchName || "Batch"}_Report.pdf`);
-      
+
+      const element = document.querySelector(".animate-fade-in") as HTMLElement || document.body;
+
+      const html2pdfModule = await import('html2pdf.js');
+      const html2pdf = html2pdfModule.default as any;
+
+      const opt = {
+        margin: [5, 8, 10, 8],
+        filename: `${batch?.batchName || "Batch"}_Report.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: {
+          scale: 2,
+          useCORS: true,
+          logging: false,
+          backgroundColor: '#ffffff',
+          windowWidth: 1024,
+          onclone: (clonedDoc: any) => {
+            // 1. Force white background on body
+            clonedDoc.body.style.setProperty('background-color', '#ffffff', 'important');
+            clonedDoc.body.style.setProperty('color', '#000000', 'important');
+
+            // 2. Inject CSS variable overrides so var(--text-*) resolves to black
+            const styleEl = clonedDoc.createElement('style');
+          styleEl.innerHTML = `
+  :root {
+    --bg-primary: #ffffff;
+    --bg-secondary: #f5f5f5;
+    --bg-card: #ffffff;
+    --text-primary: #000000;
+    --text-secondary: #000000;
+    --text-muted: #000000;
+    --border-color: #cccccc;
+    --accent-green: #15803d;
+    --accent-red: #b91c1c;
+    --accent-blue: #1d4ed8;
+    --accent-yellow: #b45309;
+    --accent-purple: #6d28d9;
+    --shadow-lg: none;
+  }
+  .no-print { display: none !important; width: 0 !important; padding: 0 !important; }
+  .data-table { width: 100%; border-collapse: collapse; table-layout: auto; }
+  .data-table th { 
+    background-color: #f0f0f0 !important; 
+    padding: 0.5rem 0.75rem; 
+    text-align: left; 
+    font-weight: 700;
+    border-bottom: 2px solid #cccccc;
+  }
+  .data-table td { 
+    padding: 0.5rem 0.75rem; 
+    text-align: left;
+    border-bottom: 1px solid #e5e5e5;
+  }
+  .data-table tfoot td { 
+    background-color: #f0f0f0 !important; 
+    font-weight: 700;
+    border-top: 2px solid #cccccc;
+  }
+  .glass-card { 
+    border: 1px solid #e0e0e0 !important; 
+    border-radius: 8px !important;
+    overflow: hidden !important;
+    margin-bottom: 1rem !important;
+    box-shadow: none !important;
+  }
+`;
+            clonedDoc.head.appendChild(styleEl);
+
+            // 3. Hide unwanted UI elements
+            ['.sticky-batch-header', '.desktop-batch-header', '.tab-nav', '.fab-container', '.no-print', '.mobile-sale-cards']
+              .forEach((sel: string) => {
+                clonedDoc.querySelectorAll(sel).forEach((el: any) => { el.style.display = 'none'; });
+              });
+
+            // 4. Show the print-only header
+            clonedDoc.querySelectorAll('.print-header').forEach((el: any) => { el.style.display = 'block'; });
+
+            // 5. Walk every element:
+            //    - Unconditionally force text to pure black (no threshold check — that was the bug)
+            //    - Fix dark backgrounds → white using computed style from the original window
+           clonedDoc.querySelectorAll('*').forEach((el: any) => {
+  // Force pure black text
+  el.style.setProperty('color', '#000000', 'important');
+  // Reset opacity — THIS is what was making #000000 render as gray
+  el.style.setProperty('opacity', '1', 'important');
+
+  // Fix dark backgrounds → white
+  const computed = window.getComputedStyle(el);
+  const bg = computed.backgroundColor;
+  if (bg && bg !== 'rgba(0, 0, 0, 0)' && bg !== 'transparent') {
+    const rgb = bg.match(/\d+/g)?.map(Number) || [];
+    if (rgb.length >= 3 && (rgb[0] + rgb[1] + rgb[2]) < 200) {
+      el.style.setProperty('background-color', '#ffffff', 'important');
+    }
+  }
+});
+          }
+        },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+      };
+
+      await html2pdf().set(opt).from(element).save();
+
       toast.success("PDF ডাউনলোড সফল হয়েছে!", { id: toastId });
     } catch (error) {
       console.error("PDF Export Error:", error);
@@ -295,10 +359,16 @@ export default function BatchDetailPage() {
 
       {/* Mobile Sticky Header */}
       <div className="sticky-batch-header">
-        <div className="batch-title">
-          <Link href="/batches" style={{ color: "var(--text-muted)", display: "flex" }}><HiOutlineArrowLeft size={18} /></Link>
-          {batch.batchName}
-          <span className={`badge ${batch.status === "active" ? "badge-green" : "badge-blue"}`} style={{ fontSize: "0.7rem", padding: "0.15rem 0.5rem" }}>{statusBn[batch.status] || batch.status}</span>
+        <div className="batch-title" style={{ justifyContent: "space-between", width: "100%" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <Link href="/batches" style={{ color: "var(--text-muted)", display: "flex" }}><HiOutlineArrowLeft size={18} /></Link>
+            {batch.batchName}
+            <span className={`badge ${batch.status === "active" ? "badge-green" : "badge-blue"}`} style={{ fontSize: "0.7rem", padding: "0.15rem 0.5rem" }}>{statusBn[batch.status] || batch.status}</span>
+          </div>
+          <div style={{ display: "flex", gap: "0.5rem" }}>
+            {tab === "sales" && <button className="btn-icon" onClick={handleDownloadPdf} style={{ padding: "0.25rem", color: "var(--text-primary)" }}><HiOutlinePrinter size={16} /></button>}
+            <button className="btn-icon" onClick={() => setModal("editBatch")} style={{ padding: "0.25rem", color: "var(--text-primary)" }}><HiOutlinePencil size={16} /></button>
+          </div>
         </div>
         <div className="tab-nav">
           {tabs.map(t => (
@@ -568,19 +638,14 @@ export default function BatchDetailPage() {
       {/* FAB for mobile */}
       {tab === "sales" && (
         <div className="fab-container">
-          <div className={`fab-menu ${fabOpen ? "open" : ""}`}>
-            <button className="fab-menu-item" onClick={() => { setSaleType("meat"); setModal("sale"); setFabOpen(false); }}>🥩 গোশত বিক্রি</button>
-            <button className="fab-menu-item" onClick={() => { setSaleType("chamra"); setModal("sale"); setFabOpen(false); }}>🧾 চামড়া/ভুঁড়ি/পা</button>
-          </div>
-          <button className={`fab-btn ${fabOpen ? "open" : ""}`} onClick={() => setFabOpen(!fabOpen)}>
-            <HiPlus style={{ transition: "transform 0.3s ease", transform: fabOpen ? "rotate(45deg)" : "rotate(0deg)" }} />
+          <button className="fab-btn" onClick={() => setModal("sale")}>
+            <HiPlus />
           </button>
         </div>
       )}
 
       {/* UNIFIED SALE MODAL */}
       <Modal isOpen={modal === "sale"} onClose={() => { setModal(""); setShowSuggestions(""); }} title="বিক্রি যোগ করুন">
-        {/* Sale Type Selector */}
         <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem" }}>
           {[{ k: "meat", l: "🥩 গোশত" }, { k: "chamra", l: "চামড়া" }, { k: "vuri", l: "ভুঁড়ি" }, { k: "pa", l: "পা" }, { k: "other", l: "অন্যান্য" }].map(t => (
             <button key={t.k} type="button" className={`tab-btn ${saleType === t.k ? "active" : ""}`} style={{ fontSize: "0.82rem", padding: "0.4rem 0.75rem" }} onClick={() => setSaleType(t.k)}>{t.l}</button>

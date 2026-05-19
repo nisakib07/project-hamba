@@ -742,25 +742,59 @@ body {
 }
 
 /* Equivalent rules for html2canvas PDF export */
-body.pdf-exporting .no-print,
-body.pdf-exporting .tab-nav,
-body.pdf-exporting .btn,
-body.pdf-exporting .btn-icon,
-body.pdf-exporting .btn-collect,
-body.pdf-exporting .action-group,
-body.pdf-exporting .tab-search,
-body.pdf-exporting .modal-overlay,
-body.pdf-exporting .mobile-top-bar,
-body.pdf-exporting #mobile-menu-btn,
-body.pdf-exporting .bottom-nav,
-body.pdf-exporting .fab-container,
-body.pdf-exporting .sticky-batch-header,
-body.pdf-exporting .desktop-batch-header {
+.pdf-exporting {
+  background: #ffffff !important;
+}
+
+.pdf-exporting body {
+  background: #ffffff !important;
+  max-width: none !important;
+}
+
+.pdf-exporting .main-content {
+  background: #ffffff !important;
+  color: #111827 !important;
+  width: 1200px !important;
+  max-width: 1200px !important;
+  margin: 0 auto !important;
+}
+
+.pdf-exporting .print-header,
+.pdf-exporting .print-header * {
+  color: #111827 !important;
+  opacity: 1 !important;
+}
+
+.pdf-exporting .data-table {
+  color: #111827 !important;
+  font-size: 14px !important;
+  border-collapse: collapse !important;
+}
+
+.pdf-exporting .data-table th,
+.pdf-exporting .data-table td {
+  color: #111827 !important;
+  opacity: 1 !important;
+  padding: 12px 16px !important;
+  border-color: #e5e7eb !important;
+}
+
+.pdf-exporting .glass-card {
+  background: #ffffff !important;
+  box-shadow: none !important;
+  border: 1px solid #e5e7eb !important;
+}
+
+.pdf-exporting .no-print,
+.pdf-exporting .sticky-batch-header,
+.pdf-exporting .desktop-batch-header,
+.pdf-exporting .desktop-tab-nav,
+.pdf-exporting .fab-container {
   display: none !important;
 }
 
-body.pdf-exporting aside,
-body.pdf-exporting .sidebar {
+.pdf-exporting aside,
+.pdf-exporting .sidebar {
   display: none !important;
   visibility: hidden !important;
   width: 0 !important;
@@ -770,29 +804,30 @@ body.pdf-exporting .sidebar {
   left: -9999px !important;
 }
 
-body.pdf-exporting .main-content {
-  margin-left: 0 !important;
-  padding: 2rem !important; /* give some padding for the PDF */
+.pdf-exporting .bottom-nav,
+.pdf-exporting .tab-nav,
+.pdf-exporting .btn,
+.pdf-exporting .btn-icon,
+.pdf-exporting .btn-collect,
+.pdf-exporting .action-group,
+.pdf-exporting .tab-search,
+.pdf-exporting .modal-overlay,
+.pdf-exporting .mobile-top-bar,
+.pdf-exporting #mobile-menu-btn,
+.pdf-exporting .mobile-sale-cards {
+  display: none !important;
 }
 
-body.pdf-exporting,
-body.pdf-exporting .main-content {
-  background: white !important;
-  color: black !important;
+.pdf-exporting .desktop-table {
+  display: table !important;
 }
 
-body.pdf-exporting .glass-card {
-  background: white !important;
-  border: 1px solid #ddd !important;
-  box-shadow: none !important;
-  color: black !important;
-}
-
-body.pdf-exporting table,
-body.pdf-exporting td,
-body.pdf-exporting th {
-  color: black !important;
-  border-color: #ddd !important;
+.pdf-exporting .print-header {
+  display: block !important;
+  text-align: center;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #333;
 }
 
 /* =============================================
