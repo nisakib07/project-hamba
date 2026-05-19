@@ -79,8 +79,8 @@ export default function BatchDetailPage() {
   const [modal, setModal] = useState("");
   const [searchSales, setSearchSales] = useState("");
   const [collectAmt, setCollectAmt] = useState("");
-  const [collectTarget, setCollectTarget] = useState<{id:string,type:string,name:string,total:number,paid:number,due:number}|null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<{id:string,type:string,name:string}|null>(null);
+  const [collectTarget, setCollectTarget] = useState<{name:string,total:number,paid:number,due:number,items:{id:string,type:string,due:number,paid:number,total:number}[]}|null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{name:string,items:{id:string,type:string}[]}|null>(null);
   const [customerNames, setCustomerNames] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState<"meat"|"byp"|"">("");
   const [saleType, setSaleType] = useState("meat");
@@ -216,23 +216,29 @@ useEffect(() => {
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
-    const { id: targetId, type } = deleteTarget;
-    const url = type === "meat" ? `/api/batches/${id}/meat-sales/${targetId}` : type === "byproduct" ? `/api/batches/${id}/byproducts/${targetId}` : `/api/batches/${id}/expenses/${targetId}`;
-    await fetch(url, { method: "DELETE" });
-    toast.success("সফলভাবে ডিলিট হয়েছে"); setDeleteTarget(null); fetchData();
+    for (const item of deleteTarget.items) {
+      const url = item.type === "meat" ? `/api/batches/${id}/meat-sales/${item.id}` : `/api/batches/${id}/byproducts/${item.id}`;
+      await fetch(url, { method: "DELETE" });
+    }
+    toast.success(`${deleteTarget.name} এর সব বিক্রি ডিলিট হয়েছে`); setDeleteTarget(null); fetchData();
   };
 
   const collectPayment = async () => {
     if (!collectTarget || !collectAmt) return;
-    const amt = Number(collectAmt);
-    if (amt <= 0) { toast.error("সঠিক পরিমাণ দিন"); return; }
-    const newPaid = collectTarget.paid + amt;
-    const newDue = collectTarget.total - newPaid;
-    const url = collectTarget.type === "meat" ? `/api/batches/${id}/meat-sales/${collectTarget.id}` : `/api/batches/${id}/byproducts/${collectTarget.id}`;
-    const res = await fetch(url, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ paidAmount: newPaid, dueAmount: newDue, totalPrice: collectTarget.total, total: collectTarget.total }) });
-    const json = await res.json();
-    if (json.success) { toast.success(`৳${amt} আদায় হয়েছে ${collectTarget.name} থেকে`); setCollectTarget(null); setCollectAmt(""); fetchData(); }
-    else toast.error(json.error);
+    let remaining = Number(collectAmt);
+    if (remaining <= 0) { toast.error("সঠিক পরিমাণ দিন"); return; }
+    // Distribute payment across items with due (FIFO)
+    const itemsWithDue = collectTarget.items.filter(i => i.due > 0);
+    for (const item of itemsWithDue) {
+      if (remaining <= 0) break;
+      const applyAmt = Math.min(remaining, item.due);
+      const newPaid = item.paid + applyAmt;
+      const newDue = item.total - newPaid;
+      const url = item.type === "meat" ? `/api/batches/${id}/meat-sales/${item.id}` : `/api/batches/${id}/byproducts/${item.id}`;
+      await fetch(url, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ paidAmount: newPaid, dueAmount: newDue, totalPrice: item.total, total: item.total }) });
+      remaining -= applyAmt;
+    }
+    toast.success(`৳${Number(collectAmt)} আদায় হয়েছে ${collectTarget.name} থেকে`); setCollectTarget(null); setCollectAmt(""); fetchData();
   };
 
   const filteredMeat = meatSales.filter(s => s.customerName.toLowerCase().includes(searchSales.toLowerCase()));
@@ -540,7 +546,7 @@ useEffect(() => {
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
                       <span style={{ color: "var(--accent-red)", fontWeight: 700 }}>{fmt(d.due)}</span>
-                      <button className="btn-collect" onClick={() => { setCollectTarget({ id: d.id, type: d.type === "Meat" ? "meat" : "byproduct", name: d.name, total: d.total, paid: d.paid, due: d.due }); setCollectAmt(""); }}>আদায়</button>
+                      <button className="btn-collect" onClick={() => { setCollectTarget({ name: d.name, total: d.total, paid: d.paid, due: d.due, items: [{ id: d.id, type: d.type === "Meat" ? "meat" : "byproduct", due: d.due, paid: d.paid, total: d.total }] }); setCollectAmt(""); }}>আদায়</button>
                     </div>
                   </div>
                 ))}
@@ -551,7 +557,39 @@ useEffect(() => {
       )}
 
       {/* UNIFIED SALES TAB */}
-      {tab === "sales" && (
+      {tab === "sales" && (() => {
+        // Build customer-grouped data
+        const customerMap = new Map<string, { name: string; items: { label: string; type: "meat"|"byproduct"; id: string; total: number; paid: number; due: number; detail: string }[]; totalAmount: number; totalPaid: number; totalDue: number }>();
+
+        const normName = (n: string) => n.trim().toLowerCase();
+
+        filteredMeat.forEach(s => {
+          const key = normName(s.customerName);
+          if (!customerMap.has(key)) customerMap.set(key, { name: s.customerName, items: [], totalAmount: 0, totalPaid: 0, totalDue: 0 });
+          const c = customerMap.get(key)!;
+          c.items.push({ label: `${s.kgQuantity}kg গোশত`, type: "meat", id: s._id, total: s.totalPrice, paid: s.paidAmount, due: s.dueAmount, detail: `${s.kgQuantity} কেজি × ${fmt(s.pricePerKg)}` });
+          c.totalAmount += s.totalPrice;
+          c.totalPaid += s.paidAmount;
+          c.totalDue += s.dueAmount;
+        });
+
+        filteredByp.forEach(b => {
+          const name = b.buyerName || b.itemType;
+          const key = normName(name);
+          if (!customerMap.has(key)) customerMap.set(key, { name, items: [], totalAmount: 0, totalPaid: 0, totalDue: 0 });
+          const c = customerMap.get(key)!;
+          c.items.push({ label: `${b.quantity} ${itemTypeBn[b.itemType] || b.itemType}`, type: "byproduct", id: b._id, total: b.total, paid: b.paidAmount, due: b.dueAmount, detail: `${b.quantity} × ${fmt(b.price)}` });
+          c.totalAmount += b.total;
+          c.totalPaid += b.paidAmount;
+          c.totalDue += b.dueAmount;
+        });
+
+        const customerRows = Array.from(customerMap.values()).sort((a, b) => b.totalDue - a.totalDue);
+        const grandTotal = customerRows.reduce((s, c) => s + c.totalAmount, 0);
+        const grandPaid = customerRows.reduce((s, c) => s + c.totalPaid, 0);
+        const grandDue = customerRows.reduce((s, c) => s + c.totalDue, 0);
+
+        return (
         <div className="animate-fade-in">
           <div className="no-print" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem", flexWrap: "wrap", gap: "0.5rem" }}>
             <h3 style={{ fontWeight: 700 }}>সকল বিক্রি</h3>
@@ -561,113 +599,84 @@ useEffect(() => {
             </div>
           </div>
 
-          {/* Meat Sales Section */}
-          <div className="glass-card" style={{ overflow: "auto", marginBottom: "1.25rem" }}>
-            <div className="no-print" style={{ padding: "1rem 1.25rem 0.5rem", fontWeight: 700, fontSize: "0.95rem", color: "var(--accent-green)", display: "flex", alignItems: "center", gap: "0.5rem" }}>🥩 গোশত বিক্রি ({filteredMeat.length})</div>
-            {filteredMeat.length === 0 ? (
-              <div style={{ padding: "1.5rem", textAlign: "center", color: "var(--text-muted)", fontSize: "0.85rem" }}>কোনো গোশত বিক্রি নেই</div>
+          {/* Unified Customer-Grouped Sales Table */}
+          <div className="glass-card" style={{ overflow: "auto" }}>
+            {customerRows.length === 0 ? (
+              <div style={{ padding: "2rem", textAlign: "center", color: "var(--text-muted)", fontSize: "0.9rem" }}>কোনো বিক্রি নেই</div>
             ) : (
               <>
               {/* Desktop Table */}
               <table className="data-table desktop-table">
-                <thead><tr><th>ক্রেতা</th><th>কেজি</th><th className="no-print">দাম/কেজি</th><th>মোট</th><th>পেইড</th><th>বাকি</th><th className="no-print">তারিখ</th><th className="no-print">অ্যাকশন</th></tr></thead>
+                <thead><tr><th>ক্রেতা</th><th>আইটেম</th><th>মোট</th><th>পেইড</th><th>বাকি</th><th className="no-print">অ্যাকশন</th></tr></thead>
                 <tbody>
-                  {filteredMeat.map(s => (
-                    <tr key={s._id}>
-                      <td style={{ fontWeight: 600, color: "var(--text-primary)" }}>{s.customerName}</td>
-                      <td>{s.kgQuantity} কেজি</td>
-                      <td className="no-print">{fmt(s.pricePerKg)}</td>
-                      <td style={{ fontWeight: 600 }}>{fmt(s.totalPrice)}</td>
-                      <td style={{ color: "var(--accent-green)" }}>{fmt(s.paidAmount)}</td>
-                      <td style={{ color: s.dueAmount > 0 ? "var(--accent-red)" : "var(--accent-green)" }}>{fmt(s.dueAmount)}</td>
-                      <td className="no-print">{new Date(s.date).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}</td>
-                      <td className="no-print"><div className="action-group">
-                        {s.dueAmount > 0 && <button className="btn-collect" onClick={() => { setCollectTarget({ id: s._id, type: "meat", name: s.customerName, total: s.totalPrice, paid: s.paidAmount, due: s.dueAmount }); setCollectAmt(""); }}>আদায়</button>}
-                        <button className="btn-icon" onClick={() => setDeleteTarget({ id: s._id, type: "meat", name: s.customerName })} style={{ color: "var(--accent-red)", fontSize: "0.85rem" }}>🗑</button>
-                      </div></td>
+                  {customerRows.map(c => (
+                    <tr key={c.name}>
+                      <td style={{ fontWeight: 700, color: "var(--text-primary)" }}>{c.name}</td>
+                      <td>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: "0.3rem" }}>
+                          {c.items.map((item, i) => (
+                            <span key={i} className={`badge ${item.type === "meat" ? "badge-green" : "badge-purple"}`} style={{ fontSize: "0.72rem" }}>{item.label}</span>
+                          ))}
+                        </div>
+                      </td>
+                      <td style={{ fontWeight: 700 }}>{fmt(c.totalAmount)}</td>
+                      <td style={{ color: "var(--accent-green)", fontWeight: 600 }}>{fmt(c.totalPaid)}</td>
+                      <td style={{ color: c.totalDue > 0 ? "var(--accent-red)" : "var(--accent-green)", fontWeight: 700 }}>{fmt(c.totalDue)}</td>
+                      <td className="no-print">
+                        <div className="action-group">
+                          {c.totalDue > 0 && <button className="btn-collect" onClick={() => { setCollectTarget({ name: c.name, total: c.totalAmount, paid: c.totalPaid, due: c.totalDue, items: c.items.map(i => ({ id: i.id, type: i.type, due: i.due, paid: i.paid, total: i.total })) }); setCollectAmt(""); }}>আদায়</button>}
+                          <button className="btn-icon" onClick={() => setDeleteTarget({ name: c.name, items: c.items.map(i => ({ id: i.id, type: i.type })) })} style={{ color: "var(--accent-red)", fontSize: "0.85rem" }}>🗑</button>
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
                 <tfoot><tr>
-                  <td>মোট ({filteredMeat.length})</td>
-                  <td>{filteredMeat.reduce((s, m) => s + m.kgQuantity, 0).toFixed(1)} কেজি</td>
+                  <td>মোট ({customerRows.length} জন)</td>
+                  <td>{meatSales.length + byproducts.length} টি বিক্রি</td>
+                  <td style={{ fontWeight: 700 }}>{fmt(grandTotal)}</td>
+                  <td style={{ color: "var(--accent-green)", fontWeight: 700 }}>{fmt(grandPaid)}</td>
+                  <td style={{ color: "var(--accent-red)", fontWeight: 700 }}>{fmt(grandDue)}</td>
                   <td className="no-print"></td>
-                  <td>{fmt(filteredMeat.reduce((s, m) => s + m.totalPrice, 0))}</td>
-                  <td style={{ color: "var(--accent-green)" }}>{fmt(filteredMeat.reduce((s, m) => s + m.paidAmount, 0))}</td>
-                  <td style={{ color: "var(--accent-red)" }}>{fmt(filteredMeat.reduce((s, m) => s + m.dueAmount, 0))}</td>
-                  <td className="no-print"></td><td className="no-print"></td>
                 </tr></tfoot>
               </table>
               {/* Mobile Cards */}
               <div className="mobile-sale-cards">
-                {filteredMeat.map(s => (
-                  <div key={s._id} className="sale-card">
+                {customerRows.map(c => (
+                  <div key={c.name} className="sale-card">
                     <div className="sale-card-header">
-                      <span className="sale-card-name">{s.customerName}</span>
-                      <span className="sale-card-date">{new Date(s.date).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}</span>
+                      <span className="sale-card-name">{c.name}</span>
+                      <div style={{ display: "flex", gap: "0.25rem", flexWrap: "wrap" }}>
+                        {c.items.map((item, i) => (
+                          <span key={i} className={`badge ${item.type === "meat" ? "badge-green" : "badge-purple"}`} style={{ fontSize: "0.68rem" }}>{item.label}</span>
+                        ))}
+                      </div>
                     </div>
                     <div className="sale-card-grid">
-                      <div className="sale-card-stat"><div className="sale-card-stat-label">মোট</div><div className="sale-card-stat-value">{fmt(s.totalPrice)}</div></div>
-                      <div className="sale-card-stat"><div className="sale-card-stat-label">পেইড</div><div className="sale-card-stat-value" style={{ color: "var(--accent-green)" }}>{fmt(s.paidAmount)}</div></div>
-                      <div className="sale-card-stat"><div className="sale-card-stat-label">বাকি</div><div className="sale-card-stat-value" style={{ color: s.dueAmount > 0 ? "var(--accent-red)" : "var(--accent-green)" }}>{fmt(s.dueAmount)}</div></div>
+                      <div className="sale-card-stat"><div className="sale-card-stat-label">মোট</div><div className="sale-card-stat-value">{fmt(c.totalAmount)}</div></div>
+                      <div className="sale-card-stat"><div className="sale-card-stat-label">পেইড</div><div className="sale-card-stat-value" style={{ color: "var(--accent-green)" }}>{fmt(c.totalPaid)}</div></div>
+                      <div className="sale-card-stat"><div className="sale-card-stat-label">বাকি</div><div className="sale-card-stat-value" style={{ color: c.totalDue > 0 ? "var(--accent-red)" : "var(--accent-green)" }}>{fmt(c.totalDue)}</div></div>
                     </div>
                     <div className="sale-card-footer">
-                      <span className="sale-card-kg">{s.kgQuantity} কেজি × {fmt(s.pricePerKg)}</span>
+                      <span className="sale-card-kg" style={{ fontSize: "0.75rem" }}>{c.items.map(i => i.detail).join(" + ")}</span>
                       <div className="action-group">
-                        {s.dueAmount > 0 && <button className="btn-collect" onClick={() => { setCollectTarget({ id: s._id, type: "meat", name: s.customerName, total: s.totalPrice, paid: s.paidAmount, due: s.dueAmount }); setCollectAmt(""); }}>আদায়</button>}
-                        <button className="btn-icon" onClick={() => setDeleteTarget({ id: s._id, type: "meat", name: s.customerName })} style={{ color: "var(--accent-red)", fontSize: "0.85rem" }}>🗑</button>
+                        {c.totalDue > 0 && <button className="btn-collect" onClick={() => { setCollectTarget({ name: c.name, total: c.totalAmount, paid: c.totalPaid, due: c.totalDue, items: c.items.map(i => ({ id: i.id, type: i.type, due: i.due, paid: i.paid, total: i.total })) }); setCollectAmt(""); }}>আদায়</button>}
+                        <button className="btn-icon" onClick={() => setDeleteTarget({ name: c.name, items: c.items.map(i => ({ id: i.id, type: i.type })) })} style={{ color: "var(--accent-red)", fontSize: "0.85rem" }}>🗑</button>
                       </div>
                     </div>
                   </div>
                 ))}
                 <div style={{ padding: "0.5rem", background: "rgba(16,185,129,0.06)", borderRadius: "10px", display: "flex", justifyContent: "space-between", fontSize: "0.8rem", fontWeight: 700 }}>
-                  <span>মোট: {filteredMeat.reduce((s, m) => s + m.kgQuantity, 0).toFixed(1)} কেজি</span>
-                  <span>{fmt(filteredMeat.reduce((s, m) => s + m.totalPrice, 0))}</span>
+                  <span>মোট: {customerRows.length} জন কাস্টমার</span>
+                  <span>{fmt(grandTotal)}</span>
                 </div>
               </div>
               </>
             )}
           </div>
-
-          {/* Byproducts Section */}
-          <div className="glass-card no-print" style={{ overflow: "auto" }}>
-            <div style={{ padding: "1rem 1.25rem 0.5rem", fontWeight: 700, fontSize: "0.95rem", color: "var(--accent-purple)", display: "flex", alignItems: "center", gap: "0.5rem" }}>🧾 চামড়া/ভুঁড়ি/পা ({filteredByp.length})</div>
-            {filteredByp.length === 0 ? (
-              <div style={{ padding: "1.5rem", textAlign: "center", color: "var(--text-muted)", fontSize: "0.85rem" }}>কোনো চামড়া/ভুঁড়ি/পা বিক্রি নেই</div>
-            ) : (
-              <table className="data-table">
-                <thead><tr><th>ধরন</th><th>ক্রেতা</th><th>পরিমাণ</th><th>দাম</th><th>মোট</th><th>পেইড</th><th>বাকি</th><th>তারিখ</th><th>অ্যাকশন</th></tr></thead>
-                <tbody>
-                  {filteredByp.map(b => (
-                    <tr key={b._id}>
-                      <td><span className={`badge ${b.itemType === "chamra" ? "badge-purple" : b.itemType === "vuri" ? "badge-blue" : b.itemType === "pa" ? "badge-yellow" : "badge-green"}`}>{itemTypeBn[b.itemType] || b.itemType}</span></td>
-                      <td style={{ fontWeight: 600, color: "var(--text-primary)" }}>{b.buyerName || "—"}</td>
-                      <td>{b.quantity}</td>
-                      <td>{fmt(b.price)}</td>
-                      <td style={{ fontWeight: 600 }}>{fmt(b.total)}</td>
-                      <td style={{ color: "var(--accent-green)" }}>{fmt(b.paidAmount)}</td>
-                      <td style={{ color: b.dueAmount > 0 ? "var(--accent-red)" : "var(--accent-green)" }}>{fmt(b.dueAmount)}</td>
-                      <td>{new Date(b.date).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}</td>
-                      <td><div className="action-group">
-                        {b.dueAmount > 0 && <button className="btn-collect" onClick={() => { setCollectTarget({ id: b._id, type: "byproduct", name: b.buyerName || b.itemType, total: b.total, paid: b.paidAmount, due: b.dueAmount }); setCollectAmt(""); }}>আদায়</button>}
-                        <button className="btn-icon" onClick={() => setDeleteTarget({ id: b._id, type: "byproduct", name: b.buyerName || b.itemType })} style={{ color: "var(--accent-red)", fontSize: "0.85rem" }}>🗑</button>
-                      </div></td>
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot><tr>
-                  <td>মোট ({filteredByp.length})</td>
-                  <td></td><td></td><td></td>
-                  <td>{fmt(filteredByp.reduce((s, b) => s + b.total, 0))}</td>
-                  <td style={{ color: "var(--accent-green)" }}>{fmt(filteredByp.reduce((s, b) => s + b.paidAmount, 0))}</td>
-                  <td style={{ color: "var(--accent-red)" }}>{fmt(filteredByp.reduce((s, b) => s + b.dueAmount, 0))}</td>
-                  <td></td><td></td>
-                </tr></tfoot>
-              </table>
-            )}
-          </div>
         </div>
-      )}
+        );
+      })()}
 
       </div>{/* end swipe area */}
 

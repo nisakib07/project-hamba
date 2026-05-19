@@ -51,15 +51,26 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const currentPaidAmount = body.paidAmount || 0;
     const currentDueAmount = currentTotalPrice - currentPaidAmount;
 
+    // Merge with existing sale if requested
     if (body.mergeIfExisting) {
-      const existingSale = await MeatSale.findOne({ batchId: id, customerName: body.customerName });
+      const customerName = (body.customerName || "").trim();
+      // Find all meat sales for this batch, then match name case-insensitively
+      const allSales = await MeatSale.find({ batchId: id });
+      const existingSale = allSales.find(
+        (s) => (s.customerName || "").trim().toLowerCase() === customerName.toLowerCase()
+      );
+
       if (existingSale) {
         existingSale.kgQuantity += body.kgQuantity;
         existingSale.totalPrice += currentTotalPrice;
         existingSale.paidAmount += currentPaidAmount;
+
+        // Weighted average price so pre-save hook calculates correct total
+        if (existingSale.kgQuantity > 0) {
+          existingSale.pricePerKg = existingSale.totalPrice / existingSale.kgQuantity;
+        }
+
         existingSale.dueAmount = existingSale.totalPrice - existingSale.paidAmount;
-        // We leave pricePerKg as it was initially, or we could calculate a weighted average. 
-        // For simplicity, we just keep the original or update if needed.
         await existingSale.save();
         return NextResponse.json({ success: true, data: existingSale }, { status: 200 });
       }

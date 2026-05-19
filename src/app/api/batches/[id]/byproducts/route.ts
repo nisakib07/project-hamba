@@ -43,12 +43,25 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const currentPaidAmount = body.paidAmount || 0;
     const currentDueAmount = currentTotal - currentPaidAmount;
 
+    // Merge with existing sale if requested
     if (body.mergeIfExisting && body.buyerName) {
-      const existingSale = await ByproductSale.findOne({ batchId: id, buyerName: body.buyerName, itemType: body.itemType });
+      const buyerName = body.buyerName.trim();
+      // Find all byproduct sales for this batch+itemType, then match name case-insensitively
+      const allSales = await ByproductSale.find({ batchId: id, itemType: body.itemType });
+      const existingSale = allSales.find(
+        (s) => (s.buyerName || "").trim().toLowerCase() === buyerName.toLowerCase()
+      );
+
       if (existingSale) {
         existingSale.quantity = (existingSale.quantity || 1) + (body.quantity || 1);
         existingSale.total += currentTotal;
         existingSale.paidAmount += currentPaidAmount;
+
+        // Weighted average price so pre-save hook calculates correct total
+        if (existingSale.quantity > 0) {
+          existingSale.price = existingSale.total / existingSale.quantity;
+        }
+
         existingSale.dueAmount = existingSale.total - existingSale.paidAmount;
         await existingSale.save();
         return NextResponse.json({ success: true, data: existingSale }, { status: 200 });
