@@ -1001,14 +1001,13 @@ body {
   .sticky-batch-header {
     display: block;
     position: sticky;
-    top: 3.25rem;
-    z-index: 20;
-    background: rgba(11, 17, 32, 0.95);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    margin: -1rem -1rem 1rem -1rem;
+    top: 0;
+    z-index: 25;
+    background: var(--bg-primary);
+    margin: -1.5rem -1rem 1rem -1rem;
     padding: 0.75rem 1rem 0;
     border-bottom: 1px solid var(--border-color);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
   }
 
   .sticky-batch-header .batch-title {

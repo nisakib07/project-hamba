@@ -83,8 +83,8 @@ export default function DashboardPage() {
     if (searchQuery.trim() === "") {
       setFilteredCustomers([]);
     } else {
-      const q = searchQuery.toLowerCase();
-      setFilteredCustomers(customers.filter(c => c.toLowerCase().includes(q)));
+      const sanitize = (str: string) => str.toLowerCase().replace(/[\s\u200C\u200D]+/g, '');
+      setFilteredCustomers(customers.filter(c => sanitize(c).includes(sanitize(searchQuery))));
     }
   }, [searchQuery, customers]);
 

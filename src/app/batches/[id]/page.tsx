@@ -213,8 +213,15 @@ export default function BatchDetailPage() {
 
   // Helper: get filtered customer suggestions
   const getSuggestions = (query: string) => {
-    if (!query || query.length < 1) return [];
-    return customerNames.filter(n => n.toLowerCase().includes(query.toLowerCase())).slice(0, 5);
+    if (!query || query.trim().length < 1) return [];
+    
+    // Robust Bengali search: ignore spaces, case, and zero-width joiners
+    const sanitize = (str: string) => str.toLowerCase().replace(/[\s\u200C\u200D]+/g, '');
+    const sanitizedQuery = sanitize(query);
+    
+    return customerNames
+      .filter(n => sanitize(n).includes(sanitizedQuery))
+      .slice(0, 5);
   };
 
   // All dues combined
