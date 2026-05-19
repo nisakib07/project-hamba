@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import PullToRefresh from "@/components/PullToRefresh";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { HiOutlineArrowLeft, HiOutlinePencil, HiOutlinePrinter, HiOutlineSearch } from "react-icons/hi";
+import { HiOutlineArrowLeft, HiOutlinePencil, HiOutlinePrinter, HiOutlineSearch, HiPlus } from "react-icons/hi";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import Modal from "@/components/Modal";
 import ConfirmModal from "@/components/ConfirmModal";
@@ -74,7 +74,7 @@ export default function BatchDetailPage() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [profit, setProfit] = useState<ProfitCalculation | null>(null);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState("overview");
+  const [tab, setTab] = useState<"sales" | "overview">("sales");
   const [modal, setModal] = useState("");
   const [searchSales, setSearchSales] = useState("");
   const [collectAmt, setCollectAmt] = useState("");
@@ -89,7 +89,7 @@ export default function BatchDetailPage() {
   // Swipe gesture refs
   const touchStartX = useRef(0);
   const touchStartY = useRef(0);
-  const tabKeys = ["overview", "sales", "expenses"];
+  const tabKeys: ("sales" | "overview")[] = ["sales", "overview"];
 
   // Form states
   const [meatForm, setMeatForm] = useState({ customerName: "", kgQuantity: "", pricePerKg: "", paidAmount: "", date: new Date().toISOString().split("T")[0] });
@@ -234,10 +234,54 @@ export default function BatchDetailPage() {
   if (!batch || !profit) return <div className="empty-state"><div className="empty-state-title">ব্যাচ পাওয়া যায়নি</div></div>;
 
   const tabs = [
-    { key: "overview", label: "📊 সারসংক্ষেপ" },
     { key: "sales", label: `🛒 বিক্রি (${meatSales.length + byproducts.length})` },
-    { key: "expenses", label: `💸 খরচ (${expenses.length})` },
+    { key: "overview", label: "📊 সারসংক্ষেপ" },
   ];
+
+  const handleDownloadPdf = async () => {
+    const toastId = toast.loading("PDF তৈরি হচ্ছে... অনুগ্রহ করে অপেক্ষা করুন");
+    
+    try {
+      // Add a class to body to apply print-like styles
+      document.body.classList.add("pdf-exporting");
+      
+      // Wait a tick for styles to apply visually
+      await new Promise(resolve => setTimeout(resolve, 150));
+      
+      // Get the main content area
+      const element = document.querySelector(".main-content") || document.body;
+      
+      const html2canvas = (await import("html2canvas")).default;
+      const { jsPDF } = await import("jspdf");
+      
+      const canvas = await html2canvas(element as HTMLElement, {
+        scale: 2, // Higher quality
+        useCORS: true,
+        logging: false,
+        backgroundColor: "#ffffff"
+      });
+      
+      const imgData = canvas.toDataURL("image/jpeg", 0.95);
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4"
+      });
+      
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      
+      pdf.addImage(imgData, "JPEG", 0, 0, pdfWidth, pdfHeight);
+      pdf.save(`${batch?.batchName || "Batch"}_Report.pdf`);
+      
+      toast.success("PDF ডাউনলোড সফল হয়েছে!", { id: toastId });
+    } catch (error) {
+      console.error("PDF Export Error:", error);
+      toast.error("PDF তৈরি করতে সমস্যা হয়েছে", { id: toastId });
+    } finally {
+      document.body.classList.remove("pdf-exporting");
+    }
+  };
 
   return (
     <PullToRefresh onRefresh={fetchData}>
@@ -258,7 +302,7 @@ export default function BatchDetailPage() {
         </div>
         <div className="tab-nav">
           {tabs.map(t => (
-            <button key={t.key} className={`tab-btn ${tab === t.key ? "active" : ""}`} onClick={() => setTab(t.key)}>{t.label}</button>
+            <button key={t.key} className={`tab-btn ${tab === t.key ? "active" : ""}`} onClick={() => setTab(t.key as any)}>{t.label}</button>
           ))}
         </div>
       </div>
@@ -273,19 +317,7 @@ export default function BatchDetailPage() {
           <p style={{ color: "var(--text-muted)", fontSize: "0.85rem" }}>ক্রয়ের তারিখ: {new Date(batch.purchaseDate).toLocaleDateString("bn-BD", { day: "numeric", month: "short", year: "numeric" })}</p>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-          {tab === "sales" && <button className="btn btn-secondary btn-sm" onClick={() => {
-            const sidebar = document.querySelector('aside');
-            const mobileBar = document.querySelector('.mobile-top-bar');
-            if (sidebar) (sidebar as HTMLElement).style.cssText = 'display:none!important;visibility:hidden!important;';
-            if (mobileBar) (mobileBar as HTMLElement).style.cssText = 'display:none!important;visibility:hidden!important;';
-            requestAnimationFrame(() => {
-              setTimeout(() => {
-                window.print();
-                if (sidebar) (sidebar as HTMLElement).style.cssText = '';
-                if (mobileBar) (mobileBar as HTMLElement).style.cssText = '';
-              }, 100);
-            });
-          }}><HiOutlinePrinter size={15} /> প্রিন্ট</button>}
+          {tab === "sales" && <button className="btn btn-secondary btn-sm" onClick={handleDownloadPdf}><HiOutlinePrinter size={15} /> PDF ডাউনলোড</button>}
           <button className="btn btn-secondary btn-sm" onClick={() => setModal("editBatch")}><HiOutlinePencil size={15} /> ইডিট করুন</button>
           <span className={`badge ${batch.status === "active" ? "badge-green" : "badge-blue"}`} style={{ fontSize: "0.85rem", padding: "0.35rem 1rem" }}>{statusBn[batch.status] || batch.status}</span>
         </div>
@@ -294,7 +326,7 @@ export default function BatchDetailPage() {
       {/* Desktop Tabs */}
       <div className="tab-nav desktop-tab-nav" style={{ marginBottom: "1.5rem" }}>
         {tabs.map(t => (
-          <button key={t.key} className={`tab-btn ${tab === t.key ? "active" : ""}`} onClick={() => setTab(t.key)}>{t.label}</button>
+          <button key={t.key} className={`tab-btn ${tab === t.key ? "active" : ""}`} onClick={() => setTab(t.key as any)}>{t.label}</button>
         ))}
       </div>
 
@@ -310,6 +342,7 @@ export default function BatchDetailPage() {
             if (dx > 0 && idx > 0) setTab(tabKeys[idx - 1]);
           }
         }}
+        style={{ touchAction: "pan-y" }}
       >
       {/* OVERVIEW TAB */}
       {tab === "overview" && (
@@ -530,51 +563,18 @@ export default function BatchDetailPage() {
         </div>
       )}
 
-      {/* EXPENSES TAB */}
-      {tab === "expenses" && (
-        <div className="animate-fade-in">
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
-            <h3 style={{ fontWeight: 700 }}>খরচ সমূহ</h3>
-            <button className="btn btn-primary btn-sm" onClick={() => setModal("expense")}>+ খরচ যোগ করুন</button>
-          </div>
-          <div className="glass-card" style={{ overflow: "auto" }}>
-            {expenses.length === 0 ? (
-              <div className="empty-state"><div className="empty-state-icon">💸</div><div className="empty-state-title">অতিরিক্ত কোনো খরচ নেই</div></div>
-            ) : (
-              <table className="data-table">
-                <thead><tr><th>ধরন</th><th>পরিমাণ</th><th>নোট</th><th>তারিখ</th><th>অ্যাকশন</th></tr></thead>
-                <tbody>
-                  {expenses.map(ex => (
-                    <tr key={ex._id}>
-                      <td><span className="badge badge-red">{expTypeBn[ex.expenseType] || ex.expenseType}</span></td>
-                      <td style={{ fontWeight: 600 }}>{fmt(ex.amount)}</td>
-                      <td style={{ color: "var(--text-muted)" }}>{ex.note || "—"}</td>
-                      <td>{new Date(ex.date).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}</td>
-                      <td><button className="btn-icon" onClick={() => setDeleteTarget({ id: ex._id, type: "expense", name: ex.expenseType })} style={{ color: "var(--accent-red)", fontSize: "0.85rem" }}>🗑</button></td>
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot><tr>
-                  <td>মোট ({expenses.length})</td>
-                  <td style={{ color: "var(--accent-red)" }}>{fmt(expenses.reduce((s, e) => s + e.amount, 0))}</td>
-                  <td></td><td></td><td></td>
-                </tr></tfoot>
-              </table>
-            )}
-          </div>
-        </div>
-      )}
       </div>{/* end swipe area */}
 
       {/* FAB for mobile */}
-      {(tab === "sales" || tab === "expenses") && (
+      {tab === "sales" && (
         <div className="fab-container">
           <div className={`fab-menu ${fabOpen ? "open" : ""}`}>
             <button className="fab-menu-item" onClick={() => { setSaleType("meat"); setModal("sale"); setFabOpen(false); }}>🥩 গোশত বিক্রি</button>
             <button className="fab-menu-item" onClick={() => { setSaleType("chamra"); setModal("sale"); setFabOpen(false); }}>🧾 চামড়া/ভুঁড়ি/পা</button>
-            <button className="fab-menu-item" onClick={() => { setModal("expense"); setFabOpen(false); }}>💸 খরচ যোগ</button>
           </div>
-          <button className={`fab-btn ${fabOpen ? "open" : ""}`} onClick={() => setFabOpen(!fabOpen)}>+</button>
+          <button className={`fab-btn ${fabOpen ? "open" : ""}`} onClick={() => setFabOpen(!fabOpen)}>
+            <HiPlus style={{ transition: "transform 0.3s ease", transform: fabOpen ? "rotate(45deg)" : "rotate(0deg)" }} />
+          </button>
         </div>
       )}
 

@@ -609,7 +609,7 @@ body {
   animation: countUp 0.5s ease forwards;
 }
 
-/* Print styles */
+/* Print & PDF Export styles */
 @media print {
   .no-print, .tab-nav, .btn, .btn-icon, .btn-collect,
   .action-group, .tab-search, .modal-overlay,
@@ -739,6 +739,60 @@ body {
     max-width: calc(100% - 1.5rem);
     padding: 1.25rem;
   }
+}
+
+/* Equivalent rules for html2canvas PDF export */
+body.pdf-exporting .no-print,
+body.pdf-exporting .tab-nav,
+body.pdf-exporting .btn,
+body.pdf-exporting .btn-icon,
+body.pdf-exporting .btn-collect,
+body.pdf-exporting .action-group,
+body.pdf-exporting .tab-search,
+body.pdf-exporting .modal-overlay,
+body.pdf-exporting .mobile-top-bar,
+body.pdf-exporting #mobile-menu-btn,
+body.pdf-exporting .bottom-nav,
+body.pdf-exporting .fab-container,
+body.pdf-exporting .sticky-batch-header,
+body.pdf-exporting .desktop-batch-header {
+  display: none !important;
+}
+
+body.pdf-exporting aside,
+body.pdf-exporting .sidebar {
+  display: none !important;
+  visibility: hidden !important;
+  width: 0 !important;
+  height: 0 !important;
+  overflow: hidden !important;
+  position: absolute !important;
+  left: -9999px !important;
+}
+
+body.pdf-exporting .main-content {
+  margin-left: 0 !important;
+  padding: 2rem !important; /* give some padding for the PDF */
+}
+
+body.pdf-exporting,
+body.pdf-exporting .main-content {
+  background: white !important;
+  color: black !important;
+}
+
+body.pdf-exporting .glass-card {
+  background: white !important;
+  border: 1px solid #ddd !important;
+  box-shadow: none !important;
+  color: black !important;
+}
+
+body.pdf-exporting table,
+body.pdf-exporting td,
+body.pdf-exporting th {
+  color: black !important;
+  border-color: #ddd !important;
 }
 
 /* =============================================
