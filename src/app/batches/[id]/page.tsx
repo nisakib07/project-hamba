@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { createPortal } from "react-dom";
 import PullToRefresh from "@/components/PullToRefresh";
 import { useParams } from "next/navigation";
 import Link from "next/link";
@@ -81,9 +82,29 @@ export default function BatchDetailPage() {
   const [collectTarget, setCollectTarget] = useState<{id:string,type:string,name:string,total:number,paid:number,due:number}|null>(null);
   const [deleteTarget, setDeleteTarget] = useState<{id:string,type:string,name:string}|null>(null);
   const [customerNames, setCustomerNames] = useState<string[]>([]);
-  const [showSuggestions, setShowSuggestions] = useState<"meat"|"byp"|"">("")
+  const [showSuggestions, setShowSuggestions] = useState<"meat"|"byp"|"">("");
   const [saleType, setSaleType] = useState("meat");
   const [fabOpen, setFabOpen] = useState(false);
+  const meatInputRef = useRef<HTMLInputElement>(null);
+  const bypInputRef = useRef<HTMLInputElement>(null);
+
+  const getSuggestionPortalStyle = (ref: React.RefObject<HTMLInputElement | null>): React.CSSProperties => {
+    if (!ref.current) return { display: "none" };
+    const rect = ref.current.getBoundingClientRect();
+    return {
+      position: "fixed",
+      top: rect.bottom + 4,
+      left: rect.left,
+      width: rect.width,
+      background: "var(--bg-secondary)",
+      border: "1px solid var(--border-color)",
+      borderRadius: "8px",
+      zIndex: 9999,
+      maxHeight: 180,
+      overflowY: "auto",
+      boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
+    };
+  };
 
   // Swipe gesture refs
   const touchStartX = useRef(0);
@@ -91,8 +112,8 @@ export default function BatchDetailPage() {
   const tabKeys: ("sales" | "overview")[] = ["sales", "overview"];
 
   // Form states
-  const [meatForm, setMeatForm] = useState({ customerName: "", kgQuantity: "", pricePerKg: "", paidAmount: "", date: new Date().toISOString().split("T")[0] });
-  const [bypForm, setBypForm] = useState({ itemType: "chamra", quantity: "1", price: "", buyerName: "", paidAmount: "", date: new Date().toISOString().split("T")[0] });
+  const [meatForm, setMeatForm] = useState({ customerName: "", kgQuantity: "", pricePerKg: "", paidAmount: "", date: new Date().toISOString().split("T")[0], mergeIfExisting: true });
+  const [bypForm, setBypForm] = useState({ itemType: "chamra", quantity: "1", price: "", buyerName: "", paidAmount: "", date: new Date().toISOString().split("T")[0], mergeIfExisting: true });
   const [expForm, setExpForm] = useState({ expenseType: "food", amount: "", note: "", date: new Date().toISOString().split("T")[0] });
   const [editForm, setEditForm] = useState({ batchName: "", purchaseDate: "", buyingCost: "", foodCost: "", butcherCost: "", transportCost: "", otherExpenses: "", baseMeatPricePerKg: "", totalMeatKg: "", status: "active", notes: "" });
 // Add this near your other useRef/useState at the top of the component
@@ -168,19 +189,19 @@ useEffect(() => {
 
   const addMeatSale = async (e: React.FormEvent) => {
     e.preventDefault();
-    const payload = { customerName: meatForm.customerName, kgQuantity: Number(meatForm.kgQuantity), pricePerKg: Number(meatForm.pricePerKg), paidAmount: Number(meatForm.paidAmount) || 0, date: meatForm.date };
+    const payload = { customerName: meatForm.customerName, kgQuantity: Number(meatForm.kgQuantity), pricePerKg: Number(meatForm.pricePerKg), paidAmount: Number(meatForm.paidAmount) || 0, date: meatForm.date, mergeIfExisting: meatForm.mergeIfExisting };
     const res = await fetch(`/api/batches/${id}/meat-sales`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
     const json = await res.json();
-    if (json.success) { toast.success("গোশত বিক্রি যোগ হয়েছে"); setModal(""); setMeatForm({ customerName: "", kgQuantity: "", pricePerKg: String(batch?.baseMeatPricePerKg || ""), paidAmount: "", date: new Date().toISOString().split("T")[0] }); fetchData(); fetch("/api/customers").then(r => r.json()).then(j => { if (j.success) setCustomerNames(j.data); }); }
+    if (json.success) { toast.success("গোশত বিক্রি যোগ/আপডেট হয়েছে"); setModal(""); setMeatForm({ customerName: "", kgQuantity: "", pricePerKg: String(batch?.baseMeatPricePerKg || ""), paidAmount: "", date: new Date().toISOString().split("T")[0], mergeIfExisting: true }); fetchData(); fetch("/api/customers").then(r => r.json()).then(j => { if (j.success) setCustomerNames(j.data); }); }
     else toast.error(json.error);
   };
 
   const addByproduct = async (e: React.FormEvent) => {
     e.preventDefault();
-    const payload = { itemType: saleType, quantity: Number(bypForm.quantity), price: Number(bypForm.price), buyerName: bypForm.buyerName, paidAmount: Number(bypForm.paidAmount) || 0, date: bypForm.date };
+    const payload = { itemType: saleType, quantity: Number(bypForm.quantity), price: Number(bypForm.price), buyerName: bypForm.buyerName, paidAmount: Number(bypForm.paidAmount) || 0, date: bypForm.date, mergeIfExisting: bypForm.mergeIfExisting };
     const res = await fetch(`/api/batches/${id}/byproducts`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
     const json = await res.json();
-    if (json.success) { toast.success("বিক্রি যোগ হয়েছে"); setModal(""); setBypForm({ itemType: "chamra", quantity: "1", price: "", buyerName: "", paidAmount: "", date: new Date().toISOString().split("T")[0] }); fetchData(); fetch("/api/customers").then(r => r.json()).then(j => { if (j.success) setCustomerNames(j.data); }); }
+    if (json.success) { toast.success("বিক্রি যোগ/আপডেট হয়েছে"); setModal(""); setBypForm({ itemType: "chamra", quantity: "1", price: "", buyerName: "", paidAmount: "", date: new Date().toISOString().split("T")[0], mergeIfExisting: true }); fetchData(); fetch("/api/customers").then(r => r.json()).then(j => { if (j.success) setCustomerNames(j.data); }); }
     else toast.error(json.error);
   };
 
@@ -669,15 +690,16 @@ useEffect(() => {
 
         {saleType === "meat" ? (
           <form onSubmit={addMeatSale}>
-            <div className="form-group" style={{ position: "relative" }}>
+            <div className="form-group">
               <label className="form-label">ক্রেতার নাম *</label>
-              <input className="form-input" value={meatForm.customerName} onChange={e => { setMeatForm({ ...meatForm, customerName: e.target.value }); setShowSuggestions("meat"); }} onFocus={() => setShowSuggestions("meat")} onBlur={() => setTimeout(() => setShowSuggestions(""), 150)} required autoComplete="off" />
-              {showSuggestions === "meat" && getSuggestions(meatForm.customerName).length > 0 && (
-                <div style={{ position: "absolute", top: "100%", left: 0, right: 0, background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: "8px", zIndex: 10, maxHeight: 160, overflowY: "auto", boxShadow: "var(--shadow-lg)" }}>
+              <input ref={meatInputRef} className="form-input" value={meatForm.customerName} onChange={e => { setMeatForm({ ...meatForm, customerName: e.target.value }); setShowSuggestions("meat"); }} onFocus={() => setShowSuggestions("meat")} onBlur={() => setTimeout(() => setShowSuggestions(""), 200)} required autoComplete="off" />
+              {showSuggestions === "meat" && getSuggestions(meatForm.customerName).length > 0 && typeof window !== "undefined" && createPortal(
+                <div style={getSuggestionPortalStyle(meatInputRef)}>
                   {getSuggestions(meatForm.customerName).map(n => (
-                    <div key={n} style={{ padding: "0.6rem 0.75rem", cursor: "pointer", fontSize: "0.88rem", borderBottom: "1px solid var(--border-color)" }} onMouseDown={() => { setMeatForm({ ...meatForm, customerName: n }); setShowSuggestions(""); }}>{n}</div>
+                    <div key={n} style={{ padding: "0.65rem 0.85rem", cursor: "pointer", fontSize: "0.88rem", borderBottom: "1px solid var(--border-color)", color: "var(--text-primary)" }} onMouseDown={() => { setMeatForm({ ...meatForm, customerName: n }); setShowSuggestions(""); }}>{n}</div>
                   ))}
-                </div>
+                </div>,
+                document.body
               )}
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
@@ -689,20 +711,27 @@ useEffect(() => {
               <div className="form-group"><label className="form-label">তারিখ</label><input type="date" className="form-input" value={meatForm.date} onChange={e => setMeatForm({ ...meatForm, date: e.target.value })} /></div>
             </div>
             {meatForm.kgQuantity && meatForm.pricePerKg && <div style={{ padding: "0.75rem", background: "var(--bg-secondary)", borderRadius: "10px", marginBottom: "1rem", fontSize: "0.85rem" }}>মোট: <strong>{fmt(Number(meatForm.kgQuantity) * Number(meatForm.pricePerKg))}</strong> | বাকি: <strong style={{ color: "var(--accent-yellow)" }}>{fmt(Number(meatForm.kgQuantity) * Number(meatForm.pricePerKg) - (Number(meatForm.paidAmount) || 0))}</strong></div>}
+            {meatSales.some(s => s.customerName.toLowerCase() === meatForm.customerName.toLowerCase().trim()) && (
+              <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "1rem", fontSize: "0.85rem", color: "var(--text-primary)", cursor: "pointer" }}>
+                <input type="checkbox" checked={meatForm.mergeIfExisting} onChange={e => setMeatForm({ ...meatForm, mergeIfExisting: e.target.checked })} style={{ width: "16px", height: "16px" }} />
+                <span>এই ক্রেতার আগের গোশত বিক্রির সাথে যুক্ত করুন</span>
+              </label>
+            )}
             <button type="submit" className="btn btn-primary" style={{ width: "100%" }}>বিক্রি যোগ করুন</button>
           </form>
         ) : (
           <form onSubmit={(e) => { setBypForm(f => ({ ...f, itemType: saleType })); addByproduct(e); }}>
             <input type="hidden" value={saleType} />
-            <div className="form-group" style={{ position: "relative" }}>
+            <div className="form-group">
               <label className="form-label">ক্রেতার নাম *</label>
-              <input className="form-input" value={bypForm.buyerName} onChange={e => { setBypForm({ ...bypForm, buyerName: e.target.value }); setShowSuggestions("byp"); }} onFocus={() => setShowSuggestions("byp")} onBlur={() => setTimeout(() => setShowSuggestions(""), 150)} placeholder="ক্রেতার নাম" required autoComplete="off" />
-              {showSuggestions === "byp" && getSuggestions(bypForm.buyerName).length > 0 && (
-                <div style={{ position: "absolute", top: "100%", left: 0, right: 0, background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: "8px", zIndex: 10, maxHeight: 160, overflowY: "auto", boxShadow: "var(--shadow-lg)" }}>
+              <input ref={bypInputRef} className="form-input" value={bypForm.buyerName} onChange={e => { setBypForm({ ...bypForm, buyerName: e.target.value }); setShowSuggestions("byp"); }} onFocus={() => setShowSuggestions("byp")} onBlur={() => setTimeout(() => setShowSuggestions(""), 200)} placeholder="ক্রেতার নাম" required autoComplete="off" />
+              {showSuggestions === "byp" && getSuggestions(bypForm.buyerName).length > 0 && typeof window !== "undefined" && createPortal(
+                <div style={getSuggestionPortalStyle(bypInputRef)}>
                   {getSuggestions(bypForm.buyerName).map(n => (
-                    <div key={n} style={{ padding: "0.6rem 0.75rem", cursor: "pointer", fontSize: "0.88rem", borderBottom: "1px solid var(--border-color)" }} onMouseDown={() => { setBypForm({ ...bypForm, buyerName: n }); setShowSuggestions(""); }}>{n}</div>
+                    <div key={n} style={{ padding: "0.65rem 0.85rem", cursor: "pointer", fontSize: "0.88rem", borderBottom: "1px solid var(--border-color)", color: "var(--text-primary)" }} onMouseDown={() => { setBypForm({ ...bypForm, buyerName: n }); setShowSuggestions(""); }}>{n}</div>
                   ))}
-                </div>
+                </div>,
+                document.body
               )}
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
@@ -714,6 +743,12 @@ useEffect(() => {
               <div className="form-group"><label className="form-label">তারিখ</label><input type="date" className="form-input" value={bypForm.date} onChange={e => setBypForm({ ...bypForm, date: e.target.value })} /></div>
             </div>
             {bypForm.price && <div style={{ padding: "0.75rem", background: "var(--bg-secondary)", borderRadius: "10px", marginBottom: "1rem", fontSize: "0.85rem" }}>মোট: <strong>{fmt(Number(bypForm.quantity || 1) * Number(bypForm.price))}</strong> | বাকি: <strong style={{ color: "var(--accent-yellow)" }}>{fmt(Number(bypForm.quantity || 1) * Number(bypForm.price) - (Number(bypForm.paidAmount) || 0))}</strong></div>}
+            {byproducts.some(b => (b.buyerName||"").toLowerCase() === bypForm.buyerName.toLowerCase().trim() && b.itemType === saleType) && (
+              <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "1rem", fontSize: "0.85rem", color: "var(--text-primary)", cursor: "pointer" }}>
+                <input type="checkbox" checked={bypForm.mergeIfExisting} onChange={e => setBypForm({ ...bypForm, mergeIfExisting: e.target.checked })} style={{ width: "16px", height: "16px" }} />
+                <span>এই ক্রেতার আগের বিক্রির সাথে যুক্ত করুন</span>
+              </label>
+            )}
             <button type="submit" className="btn btn-primary" style={{ width: "100%" }}>বিক্রি যোগ করুন</button>
           </form>
         )}

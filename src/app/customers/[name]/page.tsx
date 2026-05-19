@@ -1,21 +1,7 @@
-"use client";
-
-import { useState, useEffect, useCallback, use } from "react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
-import toast from "react-hot-toast";
-import {
-  HiOutlineCash,
-  HiOutlineExclamationCircle,
-  HiOutlineScale,
-  HiOutlineArrowLeft,
-  HiOutlineCurrencyDollar,
-} from "react-icons/hi";
-import LoadingSpinner from "@/components/LoadingSpinner";
-
-function formatCurrency(amount: number): string {
-  return "৳" + amount.toLocaleString("en-BD", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
-}
+import dbConnect from "@/lib/mongodb";
+import MeatSale from "@/models/MeatSale";
+import ByproductSale from "@/models/ByproductSale";
+import CustomerDashboardClient from "@/components/CustomerDashboardClient";
 
 interface PurchaseHistory {
   _id: string;
@@ -37,277 +23,55 @@ interface CustomerData {
   history: PurchaseHistory[];
 }
 
-export default function CustomerDashboard({ params }: { params: Promise<{ name: string }> }) {
-  const resolvedParams = use(params);
-  const name = decodeURIComponent(resolvedParams.name);
-  const router = useRouter();
+async function getCustomerData(name: string): Promise<CustomerData> {
+  await dbConnect();
 
-  const [data, setData] = useState<CustomerData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [paymentAmount, setPaymentAmount] = useState("");
-  const [isProcessing, setIsProcessing] = useState(false);
+  const meatSales = await MeatSale.find({ customerName: name }).lean();
+  const byproductSales = await ByproductSale.find({ buyerName: name }).lean();
 
-  const fetchCustomerData = useCallback(async () => {
-    try {
-      const res = await fetch(`/api/customers/${encodeURIComponent(name)}`);
-      const json = await res.json();
-      if (json.success) {
-        setData(json.data);
-      } else {
-        toast.error("কাস্টমারের তথ্য পাওয়া যায়নি");
-        router.push("/");
-      }
-    } catch (err) {
-      console.error("Failed to load customer:", err);
-      toast.error("ডেটা লোড করতে সমস্যা হয়েছে");
-    } finally {
-      setLoading(false);
-    }
-  }, [name, router]);
+  const history = [
+    ...meatSales.map((sale: any) => ({
+      _id: sale._id.toString(),
+      batchId: sale.batchId.toString(),
+      batchName: sale.batchName,
+      type: "meat",
+      detail: sale.customerName,
+      total: sale.totalPrice,
+      paid: sale.paidAmount,
+      due: sale.dueAmount,
+      date: sale.date instanceof Date ? sale.date.toISOString() : sale.date,
+    })),
+    ...byproductSales.map((item: any) => ({
+      _id: item._id.toString(),
+      batchId: item.batchId.toString(),
+      batchName: item.batchName,
+      type: item.itemType || "other",
+      detail: item.itemType || "অন্যান্য",
+      total: item.total,
+      paid: item.paidAmount,
+      due: item.dueAmount,
+      date: item.date instanceof Date ? item.date.toISOString() : item.date,
+    })),
 
-  useEffect(() => {
-    fetchCustomerData();
-  }, [fetchCustomerData]);
+  ];
 
-  const handlePayment = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const amount = Number(paymentAmount);
-    
-    if (!amount || amount <= 0) {
-      toast.error("সঠিক টাকার পরিমাণ দিন");
-      return;
-    }
+  history.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-    if (data && amount > data.totalDue) {
-      toast.error("পেমেন্ট বকেয়া থেকে বেশি হতে পারে না");
-      return;
-    }
+  const totalPurchased = history.reduce((sum, item) => sum + item.total, 0);
+  const totalPaid = history.reduce((sum, item) => sum + item.paid, 0);
+  const totalDue = history.reduce((sum, item) => sum + item.due, 0);
 
-    setIsProcessing(true);
-    try {
-      const res = await fetch(`/api/customers/${encodeURIComponent(name)}/payment`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount }),
-      });
-      
-      const json = await res.json();
-      
-      if (json.success) {
-        toast.success(`৳${amount} পেমেন্ট সফল হয়েছে`);
-        setPaymentAmount("");
-        fetchCustomerData(); // Refresh data
-      } else {
-        toast.error(json.error || "পেমেন্ট ব্যর্থ হয়েছে");
-      }
-    } catch (err) {
-      console.error("Payment error:", err);
-      toast.error("সার্ভার এরর");
-    } finally {
-      setIsProcessing(false);
-    }
+  return {
+    name,
+    totalPurchased,
+    totalPaid,
+    totalDue,
+    history,
   };
+}
 
-  if (loading) return <LoadingSpinner />;
-
-  if (!data) return null;
-
-  const typeBn: Record<string, string> = { 
-    meat: "গোশত", 
-    chamra: "চামড়া", 
-    vuri: "ভুঁড়ি", 
-    pa: "পা", 
-    other: "অন্যান্য" 
-  };
-
-  return (
-    <div className="animate-fade-in" style={{ maxWidth: "1000px", margin: "0 auto" }}>
-      {/* Header */}
-      <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "2rem" }}>
-        <Link href="/" className="btn btn-secondary btn-sm" style={{ padding: "0.5rem" }}>
-          <HiOutlineArrowLeft size={18} />
-        </Link>
-        <div>
-          <h1 style={{ fontSize: "1.75rem", fontWeight: 800, marginBottom: "0.2rem" }}>
-            {data.name}
-          </h1>
-          <p style={{ color: "var(--text-muted)", fontSize: "0.9rem" }}>
-            কাস্টমার প্রোফাইল এবং লেনদেনের বিবরণ
-          </p>
-        </div>
-      </div>
-
-      {/* Summary Cards */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-          gap: "1.25rem",
-          marginBottom: "2rem",
-        }}
-      >
-        <div className="stat-card blue">
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-            <div>
-              <div style={{ fontSize: "0.8rem", fontWeight: 500, opacity: 0.85, marginBottom: "0.5rem" }}>
-                মোট ক্রয়
-              </div>
-              <div style={{ fontSize: "1.6rem", fontWeight: 800 }}>
-                {formatCurrency(data.totalPurchased)}
-              </div>
-            </div>
-            <HiOutlineScale size={28} style={{ opacity: 0.7 }} />
-          </div>
-        </div>
-
-        <div className="stat-card green">
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-            <div>
-              <div style={{ fontSize: "0.8rem", fontWeight: 500, opacity: 0.85, marginBottom: "0.5rem" }}>
-                মোট পরিশোধ
-              </div>
-              <div style={{ fontSize: "1.6rem", fontWeight: 800 }}>
-                {formatCurrency(data.totalPaid)}
-              </div>
-            </div>
-            <HiOutlineCash size={28} style={{ opacity: 0.7 }} />
-          </div>
-        </div>
-
-        <div className={`stat-card ${data.totalDue > 0 ? "red" : "purple"}`}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-            <div>
-              <div style={{ fontSize: "0.8rem", fontWeight: 500, opacity: 0.85, marginBottom: "0.5rem" }}>
-                মোট বকেয়া
-              </div>
-              <div style={{ fontSize: "1.6rem", fontWeight: 800 }}>
-                {formatCurrency(data.totalDue)}
-              </div>
-            </div>
-            <HiOutlineExclamationCircle size={28} style={{ opacity: 0.7 }} />
-          </div>
-        </div>
-      </div>
-
-      <div style={{ display: "grid", gridTemplateColumns: "1fr lg:1fr", gap: "1.5rem", alignItems: "start" }}>
-        
-        {/* Payment Section */}
-        {data.totalDue > 0 && (
-          <div className="glass-card" style={{ padding: "1.5rem", marginBottom: "1.5rem" }}>
-            <h2 style={{ fontSize: "1.1rem", fontWeight: 700, marginBottom: "1rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
-              <HiOutlineCurrencyDollar className="text-accent-green" />
-              পেমেন্ট গ্রহণ করুন
-            </h2>
-            <form onSubmit={handlePayment} style={{ display: "flex", gap: "1rem", alignItems: "flex-end" }}>
-              <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
-                <label className="form-label">টাকার পরিমাণ</label>
-                <input
-                  type="number"
-                  className="form-input"
-                  placeholder="যেমন: 500"
-                  value={paymentAmount}
-                  onChange={(e) => setPaymentAmount(e.target.value)}
-                  min="1"
-                  max={data.totalDue}
-                  step="any"
-                  disabled={isProcessing}
-                  required
-                />
-              </div>
-              <button 
-                type="submit" 
-                className="btn btn-primary" 
-                disabled={isProcessing || !paymentAmount || Number(paymentAmount) <= 0 || Number(paymentAmount) > data.totalDue}
-                style={{ padding: "0.6rem 1.5rem" }}
-              >
-                {isProcessing ? "প্রসেস হচ্ছে..." : "জমা দিন"}
-              </button>
-            </form>
-            <div style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginTop: "0.75rem" }}>
-              * পেমেন্ট স্বয়ংক্রিয়ভাবে সবচেয়ে পুরনো বকেয়া থেকে কাটা হবে (FIFO পদ্ধতি)।
-            </div>
-          </div>
-        )}
-
-        {/* History Table */}
-        <div className="glass-card" style={{ padding: "1.5rem", overflowX: "auto" }}>
-          <h2 style={{ fontSize: "1.1rem", fontWeight: 700, marginBottom: "1.25rem" }}>
-            লেনদেনের বিবরণ
-          </h2>
-          
-          {data.history.length === 0 ? (
-             <div className="empty-state" style={{ padding: "2rem" }}>
-                <div className="empty-state-text">কোনো লেনদেন পাওয়া যায়নি</div>
-             </div>
-          ) : (
-            <>
-            {/* Desktop Table */}
-            <table className="data-table desktop-table" style={{ width: "100%", minWidth: "600px", borderCollapse: "collapse" }}>
-              <thead>
-                <tr>
-                  <th style={{ textAlign: "left", padding: "1rem" }}>তারিখ</th>
-                  <th style={{ textAlign: "left", padding: "1rem" }}>ব্যাচ</th>
-                  <th style={{ textAlign: "left", padding: "1rem" }}>বিবরণ</th>
-                  <th style={{ textAlign: "right", padding: "1rem" }}>মোট</th>
-                  <th style={{ textAlign: "right", padding: "1rem" }}>পরিশোধ</th>
-                  <th style={{ textAlign: "right", padding: "1rem" }}>বকেয়া</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.history.map((item) => (
-                  <tr key={item._id} style={{ borderBottom: "1px solid var(--border-color)" }}>
-                    <td style={{ padding: "1rem", fontSize: "0.9rem" }}>
-                      {new Date(item.date).toLocaleDateString("bn-BD")}
-                    </td>
-                    <td style={{ padding: "1rem", fontSize: "0.9rem", fontWeight: 500 }}>
-                      <Link href={`/batches/${item.batchId}`} style={{ color: "var(--accent-blue)", textDecoration: "none" }}>
-                        {item.batchName}
-                      </Link>
-                    </td>
-                    <td style={{ padding: "1rem" }}>
-                      <div style={{ fontSize: "0.9rem" }}>{typeBn[item.type] || item.type}</div>
-                      <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>{item.detail}</div>
-                    </td>
-                    <td style={{ padding: "1rem", textAlign: "right", fontWeight: 600 }}>
-                      {formatCurrency(item.total)}
-                    </td>
-                    <td style={{ padding: "1rem", textAlign: "right", color: "var(--accent-green)" }}>
-                      {formatCurrency(item.paid)}
-                    </td>
-                    <td style={{ padding: "1rem", textAlign: "right", color: item.due > 0 ? "var(--accent-red)" : "inherit" }}>
-                      {formatCurrency(item.due)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {/* Mobile Cards */}
-            <div className="mobile-sale-cards">
-              {data.history.map((item) => (
-                <div key={item._id} className="sale-card">
-                  <div className="sale-card-header">
-                    <div>
-                      <Link href={`/batches/${item.batchId}`} style={{ color: "var(--accent-blue)", textDecoration: "none", fontWeight: 600, fontSize: "0.9rem" }}>
-                        {item.batchName}
-                      </Link>
-                      <span className="badge badge-blue" style={{ marginLeft: "0.5rem", fontSize: "0.65rem" }}>{typeBn[item.type] || item.type}</span>
-                    </div>
-                    <span className="sale-card-date">{new Date(item.date).toLocaleDateString("bn-BD")}</span>
-                  </div>
-                  <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: "0.5rem" }}>{item.detail}</div>
-                  <div className="sale-card-grid">
-                    <div className="sale-card-stat"><div className="sale-card-stat-label">মোট</div><div className="sale-card-stat-value">{formatCurrency(item.total)}</div></div>
-                    <div className="sale-card-stat"><div className="sale-card-stat-label">পরিশোধ</div><div className="sale-card-stat-value" style={{ color: "var(--accent-green)" }}>{formatCurrency(item.paid)}</div></div>
-                    <div className="sale-card-stat"><div className="sale-card-stat-label">বকেয়া</div><div className="sale-card-stat-value" style={{ color: item.due > 0 ? "var(--accent-red)" : "var(--accent-green)" }}>{formatCurrency(item.due)}</div></div>
-                  </div>
-                </div>
-              ))}
-            </div>
-            </>
-          )}
-        </div>
-
-      </div>
-    </div>
-  );
+export default async function CustomerDashboardPage({ params }: { params: { name: string } }) {
+  const customerName = decodeURIComponent(params.name);
+  const data = await getCustomerData(customerName);
+  return <CustomerDashboardClient customerName={customerName} data={data} />;
 }

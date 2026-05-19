@@ -10,44 +10,75 @@ export async function GET() {
   try {
     await dbConnect();
 
-    const batches = await CowBatch.find({}).sort({ createdAt: -1 });
+    const batches = await CowBatch.find({}).sort({ createdAt: -1 }).lean();
+    const batchIds = batches.map((batch: any) => batch._id);
+
+    const [meatGroups, byproductGroups, expenseGroups] = await Promise.all([
+      MeatSale.aggregate([
+        { $match: { batchId: { $in: batchIds } } },
+        {
+          $group: {
+            _id: "$batchId",
+            revenue: { $sum: "$totalPrice" },
+            kgSold: { $sum: "$kgQuantity" },
+            paid: { $sum: "$paidAmount" },
+            due: { $sum: "$dueAmount" },
+          },
+        },
+      ]),
+      ByproductSale.aggregate([
+        { $match: { batchId: { $in: batchIds } } },
+        {
+          $group: {
+            _id: "$batchId",
+            revenue: { $sum: "$total" },
+          },
+        },
+      ]),
+      Expense.aggregate([
+        { $match: { batchId: { $in: batchIds } } },
+        {
+          $group: {
+            _id: "$batchId",
+            amount: { $sum: "$amount" },
+          },
+        },
+      ]),
+    ]);
+
+    const meatMap = new Map(meatGroups.map((item: any) => [item._id.toString(), item]));
+    const byproductMap = new Map(byproductGroups.map((item: any) => [item._id.toString(), item]));
+    const expenseMap = new Map(expenseGroups.map((item: any) => [item._id.toString(), item]));
 
     let totalRevenue = 0;
     let totalCost = 0;
     let totalKgSold = 0;
     let totalPaid = 0;
     let totalDue = 0;
-    const activeBatches = batches.filter((b) => b.status === "active").length;
+    const activeBatches = batches.filter((batch: any) => batch.status === "active").length;
 
     const batchSummaries = [];
 
     for (const batch of batches) {
-      const meatSales = await MeatSale.find({ batchId: batch._id });
-      const byproductSales = await ByproductSale.find({ batchId: batch._id });
-      const expenses = await Expense.find({ batchId: batch._id });
+      const batchId = batch._id.toString();
+      const meatStats = meatMap.get(batchId) ?? { revenue: 0, kgSold: 0, paid: 0, due: 0 };
+      const byproductStats = byproductMap.get(batchId) ?? { revenue: 0 };
+      const expenseStats = expenseMap.get(batchId) ?? { amount: 0 };
 
-      const meatRevenue = meatSales.reduce((s, m) => s + m.totalPrice, 0);
-      const byproductRevenue = byproductSales.reduce((s, b) => s + b.total, 0);
-      const batchRevenue = meatRevenue + byproductRevenue;
-
-      const additionalExpenses = expenses.reduce((s, e) => s + e.amount, 0);
+      const batchRevenue = meatStats.revenue + byproductStats.revenue;
       const batchCost =
         batch.buyingCost +
         batch.foodCost +
         batch.butcherCost +
         batch.transportCost +
         batch.otherExpenses +
-        additionalExpenses;
-
-      const batchKgSold = meatSales.reduce((s, m) => s + m.kgQuantity, 0);
-      const batchPaid = meatSales.reduce((s, m) => s + m.paidAmount, 0);
-      const batchDueAmount = meatSales.reduce((s, m) => s + m.dueAmount, 0);
+        expenseStats.amount;
 
       totalRevenue += batchRevenue;
       totalCost += batchCost;
-      totalKgSold += batchKgSold;
-      totalPaid += batchPaid;
-      totalDue += batchDueAmount;
+      totalKgSold += meatStats.kgSold;
+      totalPaid += meatStats.paid;
+      totalDue += meatStats.due;
 
       batchSummaries.push({
         _id: batch._id,
@@ -57,7 +88,7 @@ export async function GET() {
         revenue: batchRevenue,
         cost: batchCost,
         profit: batchRevenue - batchCost,
-        kgSold: batchKgSold,
+        kgSold: meatStats.kgSold,
         totalMeatKg: batch.totalMeatKg,
         createdAt: batch.createdAt,
       });

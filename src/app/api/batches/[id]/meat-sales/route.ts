@@ -47,8 +47,26 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     // Calculate derived fields
-    body.totalPrice = body.kgQuantity * body.pricePerKg;
-    body.dueAmount = body.totalPrice - (body.paidAmount || 0);
+    const currentTotalPrice = body.kgQuantity * body.pricePerKg;
+    const currentPaidAmount = body.paidAmount || 0;
+    const currentDueAmount = currentTotalPrice - currentPaidAmount;
+
+    if (body.mergeIfExisting) {
+      const existingSale = await MeatSale.findOne({ batchId: id, customerName: body.customerName });
+      if (existingSale) {
+        existingSale.kgQuantity += body.kgQuantity;
+        existingSale.totalPrice += currentTotalPrice;
+        existingSale.paidAmount += currentPaidAmount;
+        existingSale.dueAmount = existingSale.totalPrice - existingSale.paidAmount;
+        // We leave pricePerKg as it was initially, or we could calculate a weighted average. 
+        // For simplicity, we just keep the original or update if needed.
+        await existingSale.save();
+        return NextResponse.json({ success: true, data: existingSale }, { status: 200 });
+      }
+    }
+
+    body.totalPrice = currentTotalPrice;
+    body.dueAmount = currentDueAmount;
 
     const sale = await MeatSale.create(body);
     return NextResponse.json({ success: true, data: sale }, { status: 201 });

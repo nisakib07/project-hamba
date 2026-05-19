@@ -39,8 +39,24 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     const body = await request.json();
     body.batchId = id;
-    body.total = (body.quantity || 1) * body.price;
-    body.dueAmount = body.total - (body.paidAmount || 0);
+    const currentTotal = (body.quantity || 1) * body.price;
+    const currentPaidAmount = body.paidAmount || 0;
+    const currentDueAmount = currentTotal - currentPaidAmount;
+
+    if (body.mergeIfExisting && body.buyerName) {
+      const existingSale = await ByproductSale.findOne({ batchId: id, buyerName: body.buyerName, itemType: body.itemType });
+      if (existingSale) {
+        existingSale.quantity = (existingSale.quantity || 1) + (body.quantity || 1);
+        existingSale.total += currentTotal;
+        existingSale.paidAmount += currentPaidAmount;
+        existingSale.dueAmount = existingSale.total - existingSale.paidAmount;
+        await existingSale.save();
+        return NextResponse.json({ success: true, data: existingSale }, { status: 200 });
+      }
+    }
+
+    body.total = currentTotal;
+    body.dueAmount = currentDueAmount;
 
     const sale = await ByproductSale.create(body);
     return NextResponse.json({ success: true, data: sale }, { status: 201 });
