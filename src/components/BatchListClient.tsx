@@ -10,6 +10,7 @@ import {
 import LoadingSpinner from "@/components/LoadingSpinner";
 import PullToRefresh from "@/components/PullToRefresh";
 import toast from "react-hot-toast";
+import { toBengaliDigits, formatCurrency, formatBengaliDate } from "@/lib/bnUtils";
 
 interface BatchItem {
   _id: string;
@@ -26,15 +27,6 @@ interface BatchListClientProps {
   initialBatches: BatchItem[];
 }
 
-function formatCurrency(amount: number): string {
-  return (
-    "৳" +
-    amount.toLocaleString("en-BD", {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    })
-  );
-}
 
 const statusBn: Record<string, string> = {
   active: "চলমান",
@@ -249,10 +241,7 @@ export default function BatchListClient({
                         color: "var(--text-muted)",
                       }}
                     >
-                      {new Date(batch.purchaseDate).toLocaleDateString(
-                        "bn-BD",
-                        { day: "numeric", month: "short", year: "numeric" },
-                      )}
+                      {formatBengaliDate(batch.purchaseDate, { day: "numeric", month: "short", includeYear: true })}
                     </div>
                   </div>
                   <span
@@ -306,7 +295,7 @@ export default function BatchListClient({
                       মোট গোশত
                     </div>
                     <div style={{ fontWeight: 600, fontSize: "0.9rem" }}>
-                      {batch.totalMeatKg.toFixed(1)} কেজি
+                      {toBengaliDigits(batch.totalMeatKg.toFixed(1))} কেজি
                     </div>
                   </div>
                 </div>

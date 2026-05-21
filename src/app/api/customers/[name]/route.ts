@@ -3,6 +3,7 @@ import dbConnect from "@/lib/mongodb";
 import MeatSale from "@/models/MeatSale";
 import ByproductSale from "@/models/ByproductSale";
 import CowBatch from "@/models/CowBatch";
+import { toBengaliDigits, itemTypeBn } from "@/lib/bnUtils";
 
 export async function GET(
   request: Request,
@@ -28,7 +29,7 @@ export async function GET(
       batchId: sale.batchId._id,
       batchName: (sale.batchId as any).batchName,
       type: "meat",
-      detail: `${sale.kgQuantity} kg at ৳${sale.pricePerKg}/kg`,
+      detail: `${toBengaliDigits(sale.kgQuantity)} কেজি গোশত (প্রতি কেজি ৳${toBengaliDigits(sale.pricePerKg)})`,
       total: sale.totalPrice,
       paid: sale.paidAmount,
       due: sale.dueAmount,
@@ -40,7 +41,7 @@ export async function GET(
       batchId: sale.batchId._id,
       batchName: (sale.batchId as any).batchName,
       type: sale.itemType,
-      detail: `${sale.quantity} item(s) at ৳${sale.price} each`,
+      detail: `${toBengaliDigits(sale.quantity)}টি ${itemTypeBn[sale.itemType] || sale.itemType || "অন্যান্য"} (৳${toBengaliDigits(sale.price)})`,
       total: sale.total,
       paid: sale.paidAmount,
       due: sale.dueAmount,

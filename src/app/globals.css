@@ -655,16 +655,34 @@ body {
   .data-table th {
     background: #f5f5f5 !important;
     color: #333 !important;
+    padding: 12px 14px !important;
+    vertical-align: middle !important;
+    line-height: 1.45 !important;
+    display: table-cell !important;
   }
 
   .data-table td {
     color: #333 !important;
     border-bottom-color: #ddd !important;
+    padding: 12px 14px !important;
+    vertical-align: middle !important;
+    line-height: 1.45 !important;
+    display: table-cell !important;
   }
 
   .data-table tfoot td {
-    background: #f0f9f4 !important;
+    background: #f5f5f5 !important;
     color: #333 !important;
+    padding: 12px 14px !important;
+    vertical-align: middle !important;
+    line-height: 1.45 !important;
+    display: table-cell !important;
+  }
+
+  .data-table td > div {
+    display: block !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
 
   h1, h2, h3 {
@@ -672,7 +690,22 @@ body {
   }
 
   .badge {
-    border: 1px solid #ccc !important;
+    background: transparent !important;
+    background-color: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    color: #000000 !important;
+    padding: 0 !important;
+    margin: 0 8px 0 0 !important;
+    font-size: 14px !important;
+    font-weight: 500 !important;
+    display: inline-block !important;
+    line-height: 1.45 !important;
+    vertical-align: middle !important;
+  }
+
+  .badge:not(:last-child)::after {
+    content: ", " !important;
   }
 
   .print-header {
@@ -775,8 +808,45 @@ body {
 .pdf-exporting .data-table td {
   color: #111827 !important;
   opacity: 1 !important;
-  padding: 12px 16px !important;
+  padding: 12px 14px !important;
   border-color: #e5e7eb !important;
+  vertical-align: middle !important;
+  line-height: 1.45 !important;
+  display: table-cell !important;
+}
+
+.pdf-exporting .data-table td > div {
+  display: block !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+.pdf-exporting tr {
+  page-break-inside: avoid !important;
+  break-inside: avoid !important;
+}
+
+.pdf-exporting .print-header {
+  page-break-inside: avoid !important;
+  break-inside: avoid !important;
+}
+
+.pdf-exporting .badge {
+  background: transparent !important;
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  color: #000000 !important;
+  padding: 0 !important;
+  margin: 0 8px 0 0 !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  display: inline-block !important;
+  line-height: 1.45 !important;
+  vertical-align: middle !important;
+}
+
+.pdf-exporting .badge:not(:last-child)::after {
+  content: ", " !important;
 }
 
 .pdf-exporting .glass-card {
@@ -786,11 +856,21 @@ body {
 }
 
 .pdf-exporting .no-print,
+.pdf-exporting th.no-print,
+.pdf-exporting td.no-print,
+.pdf-exporting .data-table th.no-print,
+.pdf-exporting .data-table td.no-print,
 .pdf-exporting .sticky-batch-header,
 .pdf-exporting .desktop-batch-header,
 .pdf-exporting .desktop-tab-nav,
 .pdf-exporting .fab-container {
   display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  overflow: hidden !important;
+  border: none !important;
 }
 
 .pdf-exporting aside,

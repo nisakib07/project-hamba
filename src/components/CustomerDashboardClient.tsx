@@ -12,6 +12,7 @@ import {
   HiOutlineScale,
 } from "react-icons/hi";
 import LoadingSpinner from "@/components/LoadingSpinner";
+import { toBengaliDigits, formatCurrency, formatBengaliDate } from "@/lib/bnUtils";
 
 interface PurchaseHistory {
   _id: string;
@@ -38,9 +39,6 @@ interface CustomerDashboardClientProps {
   data: CustomerData;
 }
 
-function formatCurrency(amount: number): string {
-  return "৳" + amount.toLocaleString("en-BD", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
-}
 
 export default function CustomerDashboardClient({ customerName, data }: CustomerDashboardClientProps) {
   const router = useRouter();
@@ -91,7 +89,7 @@ export default function CustomerDashboardClient({ customerName, data }: Customer
       });
       const json = await res.json();
       if (json.success) {
-        toast.success(`৳${amount} পেমেন্ট সফল হয়েছে`);
+        toast.success(`৳${toBengaliDigits(amount)} পেমেন্ট সফল হয়েছে`);
         setPaymentAmount("");
         await refreshCustomer();
       } else {
@@ -197,7 +195,7 @@ export default function CustomerDashboardClient({ customerName, data }: Customer
                 <input
                   type="number"
                   className="form-input"
-                  placeholder="যেমন: 500"
+                  placeholder="যেমন: ৫০০"
                   value={paymentAmount}
                   onChange={(e) => setPaymentAmount(e.target.value)}
                   min="1"
@@ -242,10 +240,10 @@ export default function CustomerDashboardClient({ customerName, data }: Customer
                 {customerData.history.map((item) => (
                   <tr key={item._id} style={{ borderBottom: "1px solid var(--border-color)" }}>
                     <td style={{ padding: "1rem", fontSize: "0.9rem" }}>
-                      {new Date(item.date).toLocaleDateString("bn-BD")}
+                      {formatBengaliDate(item.date, { day: "numeric", month: "short", includeYear: true })}
                     </td>
                     <td style={{ padding: "1rem", fontSize: "0.9rem" }}>{item.batchName}</td>
-                    <td style={{ padding: "1rem", fontSize: "0.9rem" }}>{typeBn[item.type] || item.detail}</td>
+                    <td style={{ padding: "1rem", fontSize: "0.9rem" }}>{item.detail}</td>
                     <td style={{ padding: "1rem", textAlign: "right", fontSize: "0.9rem" }}>{formatCurrency(item.total)}</td>
                     <td style={{ padding: "1rem", textAlign: "right", fontSize: "0.9rem" }}>{formatCurrency(item.paid)}</td>
                     <td style={{ padding: "1rem", textAlign: "right", fontSize: "0.9rem" }}>{formatCurrency(item.due)}</td>

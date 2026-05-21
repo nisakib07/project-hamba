@@ -13,6 +13,7 @@ import {
 } from "react-icons/hi";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import PullToRefresh from "@/components/PullToRefresh";
+import { toBengaliDigits, formatCurrency, formatBengaliDate } from "@/lib/bnUtils";
 
 interface BatchSummary {
   _id: string;
@@ -42,10 +43,6 @@ interface DashboardData {
 interface DashboardClientProps {
   data: DashboardData;
   customers: string[];
-}
-
-function formatCurrency(amount: number): string {
-  return "৳" + amount.toLocaleString("en-BD", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 }
 
 export default function DashboardClient({ data, customers }: DashboardClientProps) {
@@ -113,14 +110,14 @@ export default function DashboardClient({ data, customers }: DashboardClientProp
       value: formatCurrency(dashboardData.netProfit),
       icon: dashboardData.netProfit >= 0 ? HiOutlineTrendingUp : HiOutlineTrendingDown,
       color: dashboardData.netProfit >= 0 ? "green" : "red",
-      sub: `${dashboardData.totalBatches}টি ব্যাচ মোট`,
+      sub: `${toBengaliDigits(dashboardData.totalBatches)}টি ব্যাচ মোট`,
     },
     {
       label: "মোট আয়",
       value: formatCurrency(dashboardData.totalRevenue),
       icon: HiOutlineCurrencyDollar,
       color: "blue",
-      sub: `${dashboardData.totalKgSold.toFixed(1)} কেজি বিক্রি`,
+      sub: `${toBengaliDigits(dashboardData.totalKgSold.toFixed(1))} কেজি বিক্রি`,
     },
     {
       label: "মোট খরচ",
@@ -255,7 +252,7 @@ export default function DashboardClient({ data, customers }: DashboardClientProp
         {dashboardData.batchSummaries.length > 0 && (
           <div className="glass-card" style={{ overflow: "auto" }}>
             <div style={{ padding: "1rem 1.25rem 0.5rem", fontWeight: 700, fontSize: "0.95rem", color: "var(--accent-green)" }}>
-              📋 ব্যাচ সমূহ ({dashboardData.batchSummaries.length})
+              📋 ব্যাচ সমূহ ({toBengaliDigits(dashboardData.batchSummaries.length)})
             </div>
             <table className="data-table">
               <thead>
@@ -281,7 +278,7 @@ export default function DashboardClient({ data, customers }: DashboardClientProp
                       {b.profit >= 0 ? "+" : ""}{formatCurrency(b.profit)}
                     </td>
                     <td style={{ color: "var(--text-muted)", fontSize: "0.8rem" }}>
-                      {new Date(b.purchaseDate).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}
+                      {formatBengaliDate(b.purchaseDate, { day: "2-digit", month: "short" })}
                     </td>
                   </tr>
                 ))}

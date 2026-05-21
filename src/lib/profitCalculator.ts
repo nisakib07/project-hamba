@@ -16,6 +16,8 @@ export interface ProfitCalculation {
   totalPaid: number;
   totalDue: number;
   remainingKg: number;
+  stockValue: number;
+  projectedProfit: number;
 }
 
 interface BatchData {
@@ -25,6 +27,7 @@ interface BatchData {
   transportCost: number;
   otherExpenses: number;
   totalMeatKg: number;
+  baseMeatPricePerKg?: number;
 }
 
 interface MeatSaleData {
@@ -70,8 +73,17 @@ export function calculateProfit(
 
   // Kg tracking
   const totalKgSold = meatSales.reduce((sum, s) => sum + s.kgQuantity, 0);
-  const profitPerKg = totalKgSold > 0 ? netProfit / totalKgSold : 0;
   const remainingKg = batch.totalMeatKg - totalKgSold;
+
+  // Realized profit calculation
+  const avgSellingPricePerKg = totalKgSold > 0 ? totalMeatRevenue / totalKgSold : 0;
+  const baseCost = batch.baseMeatPricePerKg || (batch.totalMeatKg > 0 ? totalCost / batch.totalMeatKg : 0);
+  const profitPerKg = totalKgSold > 0 && avgSellingPricePerKg > 0 ? avgSellingPricePerKg - baseCost : 0;
+
+  // Inventory Stock Value & Projected Profit calculations
+  const stockValue = remainingKg * baseCost;
+  const projectedRevenue = totalRevenue + (remainingKg * baseCost);
+  const projectedProfit = projectedRevenue - totalCost;
 
   // Payment tracking (meat + byproduct)
   const totalPaid = meatSales.reduce((sum, s) => sum + s.paidAmount, 0) + byproductSales.reduce((sum, s) => sum + (s.paidAmount || 0), 0);
@@ -95,5 +107,7 @@ export function calculateProfit(
     totalPaid,
     totalDue,
     remainingKg,
+    stockValue,
+    projectedProfit,
   };
 }

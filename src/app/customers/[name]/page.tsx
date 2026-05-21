@@ -2,6 +2,7 @@ import dbConnect from "@/lib/mongodb";
 import MeatSale from "@/models/MeatSale";
 import ByproductSale from "@/models/ByproductSale";
 import CustomerDashboardClient from "@/components/CustomerDashboardClient";
+import { toBengaliDigits, itemTypeBn } from "@/lib/bnUtils";
 
 interface PurchaseHistory {
   _id: string;
@@ -35,7 +36,7 @@ async function getCustomerData(name: string): Promise<CustomerData> {
       batchId: sale.batchId.toString(),
       batchName: sale.batchName,
       type: "meat",
-      detail: sale.customerName,
+      detail: `${toBengaliDigits(sale.kgQuantity)} কেজি গোশত (প্রতি কেজি ৳${toBengaliDigits(sale.pricePerKg)})`,
       total: sale.totalPrice,
       paid: sale.paidAmount,
       due: sale.dueAmount,
@@ -46,7 +47,7 @@ async function getCustomerData(name: string): Promise<CustomerData> {
       batchId: item.batchId.toString(),
       batchName: item.batchName,
       type: item.itemType || "other",
-      detail: item.itemType || "অন্যান্য",
+      detail: `${toBengaliDigits(item.quantity)}টি ${itemTypeBn[item.itemType] || item.itemType || "অন্যান্য"} (৳${toBengaliDigits(item.price)})`,
       total: item.total,
       paid: item.paidAmount,
       due: item.dueAmount,
