@@ -4,6 +4,7 @@ import { Toaster } from "react-hot-toast";
 import Sidebar from "@/components/Sidebar";
 import BottomNav from "@/components/BottomNav";
 import ServiceWorkerRegistrar from "@/components/ServiceWorkerRegistrar";
+import PwaInstallPrompt from "@/components/PwaInstallPrompt";
 
 export const metadata: Metadata = {
   title: "গরু ব্যবসা",
@@ -60,6 +61,7 @@ export default function RootLayout({
         </main>
         <BottomNav />
         <ServiceWorkerRegistrar />
+        <PwaInstallPrompt />
       </body>
     </html>
   );
