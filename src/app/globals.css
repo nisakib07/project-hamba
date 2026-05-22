@@ -767,8 +767,13 @@ body {
     font-size: 0.78rem;
   }
 
+  .modal-overlay {
+    align-items: flex-start;
+    padding-top: 2rem;
+  }
+
   .modal-content {
-    margin: 0.75rem;
+    margin: 0 0.75rem;
     max-width: calc(100% - 1.5rem);
     padding: 1.25rem;
   }
