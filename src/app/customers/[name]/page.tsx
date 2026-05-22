@@ -71,8 +71,10 @@ async function getCustomerData(name: string): Promise<CustomerData> {
   };
 }
 
-export default async function CustomerDashboardPage({ params }: { params: { name: string } }) {
-  const customerName = decodeURIComponent(params.name);
+export default async function CustomerDashboardPage({ params }: { params: Promise<{ name: string }> }) {
+  const resolvedParams = await params;
+  const customerName = decodeURIComponent(resolvedParams.name);
   const data = await getCustomerData(customerName);
   return <CustomerDashboardClient customerName={customerName} data={data} />;
 }
+
