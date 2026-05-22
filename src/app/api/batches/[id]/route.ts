@@ -15,7 +15,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     await dbConnect();
     const { id } = await params;
-    const batch = await CowBatch.findById(id);
+    const batch = await CowBatch.findById(id).lean();
     if (!batch) {
       return NextResponse.json(
         { success: false, error: "Batch not found" },
@@ -23,9 +23,11 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    const meatSales = await MeatSale.find({ batchId: id }).sort({ date: -1 });
-    const byproductSales = await ByproductSale.find({ batchId: id }).sort({ date: -1 });
-    const expenses = await Expense.find({ batchId: id }).sort({ date: -1 });
+    const [meatSales, byproductSales, expenses] = await Promise.all([
+      MeatSale.find({ batchId: id }).sort({ date: -1 }).lean(),
+      ByproductSale.find({ batchId: id }).sort({ date: -1 }).lean(),
+      Expense.find({ batchId: id }).sort({ date: -1 }).lean(),
+    ]);
 
     const profitData = calculateProfit(batch, meatSales, byproductSales, expenses);
 

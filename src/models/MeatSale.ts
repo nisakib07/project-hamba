@@ -62,7 +62,8 @@ const MeatSaleSchema = new Schema<IMeatSale>(
   }
 );
 
-// Pre-save middleware to calculate totalPrice and dueAmount
+// Compound index for customer lookups and aggregations
+MeatSaleSchema.index({ customerName: 1, batchId: 1 });
 MeatSaleSchema.pre("save", function () {
   this.totalPrice = this.kgQuantity * this.pricePerKg;
   this.dueAmount = this.totalPrice - this.paidAmount;

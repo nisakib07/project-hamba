@@ -6,7 +6,7 @@ import CowBatch from "@/models/CowBatch";
 export async function GET() {
   try {
     await dbConnect();
-    const batches = await CowBatch.find({}).sort({ createdAt: -1 });
+    const batches = await CowBatch.find({}).sort({ createdAt: -1 }).lean();
     return NextResponse.json({ success: true, data: batches });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Server error";

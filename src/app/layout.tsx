@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Inter, Noto_Sans_Bengali } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "react-hot-toast";
 import Sidebar from "@/components/Sidebar";
@@ -6,11 +7,28 @@ import BottomNav from "@/components/BottomNav";
 import ServiceWorkerRegistrar from "@/components/ServiceWorkerRegistrar";
 import PwaInstallPrompt from "@/components/PwaInstallPrompt";
 
+const inter = Inter({
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700", "800"],
+  variable: "--font-inter",
+  display: "swap",
+});
+
+const notoSansBengali = Noto_Sans_Bengali({
+  subsets: ["bengali"],
+  weight: ["300", "400", "500", "600", "700", "800"],
+  variable: "--font-bengali",
+  display: "swap",
+});
+
+export const viewport = {
+  themeColor: "#0f172a",
+};
+
 export const metadata: Metadata = {
   title: "গরু ব্যবসা",
   description: "গরুর গোশত ব্যবসার লাভ-ক্ষতি হিসাব। প্রতিটি ব্যাচের খরচ, বিক্রি ও মুনাফা ট্র্যাক করুন।",
   manifest: "/manifest.json",
-  themeColor: "#0f172a",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
@@ -24,7 +42,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="bn" suppressHydrationWarning>
+    <html lang="bn" className={`${inter.variable} ${notoSansBengali.variable}`} suppressHydrationWarning>
       <head>
         <link rel="apple-touch-icon" href="/icon-512x512.png" />
         <meta name="mobile-web-app-capable" content="yes" />

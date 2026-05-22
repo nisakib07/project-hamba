@@ -2,7 +2,7 @@ import BatchListClient from "@/components/BatchListClient";
 import dbConnect from "@/lib/mongodb";
 import CowBatch from "@/models/CowBatch";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 interface BatchItem {
   _id: string;

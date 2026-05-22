@@ -266,19 +266,33 @@ export default function DashboardClient({ data, customers }: DashboardClientProp
               </thead>
               <tbody>
                 {dashboardData.batchSummaries.map((b) => (
-                  <tr key={b._id} style={{ cursor: "pointer" }} onClick={() => router.push(`/batches/${b._id}`)}>
-                    <td style={{ fontWeight: 600, color: "var(--text-primary)" }}>{b.batchName}</td>
-                    <td>
-                      <span className={`badge ${b.status === "active" ? "badge-green" : "badge-blue"}`} style={{ fontSize: "0.7rem" }}>
-                        {b.status === "active" ? "চলমান" : "সম্পন্ন"}
-                      </span>
+                  <tr key={b._id} style={{ cursor: "pointer" }}>
+                    <td style={{ fontWeight: 600, padding: 0 }}>
+                      <Link href={`/batches/${b._id}`} style={{ display: "block", padding: "0.85rem 1rem", color: "var(--text-primary)", textDecoration: "none" }}>
+                        {b.batchName}
+                      </Link>
                     </td>
-                    <td style={{ fontWeight: 600 }}>{formatCurrency(b.revenue)}</td>
+                    <td>
+                      <Link href={`/batches/${b._id}`} style={{ display: "block", padding: "0.85rem 0", textDecoration: "none", color: "inherit" }}>
+                        <span className={`badge ${b.status === "active" ? "badge-green" : "badge-blue"}`} style={{ fontSize: "0.7rem" }}>
+                          {b.status === "active" ? "চলমান" : "সম্পন্ন"}
+                        </span>
+                      </Link>
+                    </td>
+                    <td style={{ fontWeight: 600 }}>
+                      <Link href={`/batches/${b._id}`} style={{ display: "block", padding: "0.85rem 0", textDecoration: "none", color: "inherit" }}>
+                        {formatCurrency(b.revenue)}
+                      </Link>
+                    </td>
                     <td style={{ color: b.profit >= 0 ? "var(--accent-green)" : "var(--accent-red)", fontWeight: 700 }}>
-                      {b.profit >= 0 ? "+" : ""}{formatCurrency(b.profit)}
+                      <Link href={`/batches/${b._id}`} style={{ display: "block", padding: "0.85rem 0", textDecoration: "none", color: "inherit" }}>
+                        {b.profit >= 0 ? "+" : ""}{formatCurrency(b.profit)}
+                      </Link>
                     </td>
                     <td style={{ color: "var(--text-muted)", fontSize: "0.8rem" }}>
-                      {formatBengaliDate(b.purchaseDate, { day: "2-digit", month: "short" })}
+                      <Link href={`/batches/${b._id}`} style={{ display: "block", padding: "0.85rem 0", textDecoration: "none", color: "inherit" }}>
+                        {formatBengaliDate(b.purchaseDate, { day: "2-digit", month: "short" })}
+                      </Link>
                     </td>
                   </tr>
                 ))}

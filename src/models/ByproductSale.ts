@@ -68,6 +68,9 @@ const ByproductSaleSchema = new Schema<IByproductSale>(
   }
 );
 
+// Compound index for customer/buyer lookups
+ByproductSaleSchema.index({ buyerName: 1, batchId: 1 });
+
 // Pre-save middleware to calculate total and due
 ByproductSaleSchema.pre("save", function () {
   this.total = this.quantity * this.price;

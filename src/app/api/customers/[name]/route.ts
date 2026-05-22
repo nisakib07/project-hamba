@@ -19,8 +19,8 @@ export async function GET(
     CowBatch.init();
 
     const [meatSales, byproductSales] = await Promise.all([
-      MeatSale.find({ customerName: name }).populate("batchId", "batchName").sort({ date: -1, createdAt: -1 }),
-      ByproductSale.find({ buyerName: name }).populate("batchId", "batchName").sort({ date: -1, createdAt: -1 }),
+      MeatSale.find({ customerName: name }).populate("batchId", "batchName").sort({ date: -1, createdAt: -1 }).lean(),
+      ByproductSale.find({ buyerName: name }).populate("batchId", "batchName").sort({ date: -1, createdAt: -1 }).lean(),
     ]);
 
     // Format data for response
