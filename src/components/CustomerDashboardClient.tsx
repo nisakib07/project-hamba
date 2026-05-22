@@ -225,32 +225,82 @@ export default function CustomerDashboardClient({ customerName, data }: Customer
               <div className="empty-state-text">কোনো লেনদেন পাওয়া যায়নি</div>
             </div>
           ) : (
-            <table className="data-table desktop-table" style={{ width: "100%", minWidth: "600px", borderCollapse: "collapse" }}>
-              <thead>
-                <tr>
-                  <th style={{ textAlign: "left", padding: "1rem" }}>তারিখ</th>
-                  <th style={{ textAlign: "left", padding: "1rem" }}>ব্যাচ</th>
-                  <th style={{ textAlign: "left", padding: "1rem" }}>বিবরণ</th>
-                  <th style={{ textAlign: "right", padding: "1rem" }}>মোট</th>
-                  <th style={{ textAlign: "right", padding: "1rem" }}>পরিশোধ</th>
-                  <th style={{ textAlign: "right", padding: "1rem" }}>বকেয়া</th>
-                </tr>
-              </thead>
-              <tbody>
-                {customerData.history.map((item) => (
-                  <tr key={item._id} style={{ borderBottom: "1px solid var(--border-color)" }}>
-                    <td style={{ padding: "1rem", fontSize: "0.9rem" }}>
-                      {formatBengaliDate(item.date, { day: "numeric", month: "short", includeYear: true })}
-                    </td>
-                    <td style={{ padding: "1rem", fontSize: "0.9rem" }}>{item.batchName}</td>
-                    <td style={{ padding: "1rem", fontSize: "0.9rem" }}>{item.detail}</td>
-                    <td style={{ padding: "1rem", textAlign: "right", fontSize: "0.9rem" }}>{formatCurrency(item.total)}</td>
-                    <td style={{ padding: "1rem", textAlign: "right", fontSize: "0.9rem" }}>{formatCurrency(item.paid)}</td>
-                    <td style={{ padding: "1rem", textAlign: "right", fontSize: "0.9rem" }}>{formatCurrency(item.due)}</td>
+            <>
+              <table className="data-table desktop-table" style={{ width: "100%", minWidth: "600px", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr>
+                    <th style={{ textAlign: "left", padding: "1rem" }}>তারিখ</th>
+                    <th style={{ textAlign: "left", padding: "1rem" }}>ব্যাচ</th>
+                    <th style={{ textAlign: "left", padding: "1rem" }}>বিবরণ</th>
+                    <th style={{ textAlign: "right", padding: "1rem" }}>মোট</th>
+                    <th style={{ textAlign: "right", padding: "1rem" }}>পরিশোধ</th>
+                    <th style={{ textAlign: "right", padding: "1rem" }}>বকেয়া</th>
                   </tr>
+                </thead>
+                <tbody>
+                  {customerData.history.map((item) => (
+                    <tr key={item._id} style={{ borderBottom: "1px solid var(--border-color)" }}>
+                      <td style={{ padding: "1rem", fontSize: "0.9rem" }}>
+                        {formatBengaliDate(item.date, { day: "numeric", month: "short", includeYear: true })}
+                      </td>
+                      <td style={{ padding: "1rem", fontSize: "0.9rem" }}>{item.batchName}</td>
+                      <td style={{ padding: "1rem", fontSize: "0.9rem" }}>{item.detail}</td>
+                      <td style={{ padding: "1rem", textAlign: "right", fontSize: "0.9rem" }}>{formatCurrency(item.total)}</td>
+                      <td style={{ padding: "1rem", textAlign: "right", fontSize: "0.9rem" }}>{formatCurrency(item.paid)}</td>
+                      <td style={{ padding: "1rem", textAlign: "right", fontSize: "0.9rem" }}>{formatCurrency(item.due)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              {/* Mobile Cards */}
+              <div className="mobile-sale-cards" style={{ padding: 0 }}>
+                {customerData.history.map((item) => (
+                  <div key={item._id} className="sale-card" style={{ marginBottom: "0.5rem" }}>
+                    <div className="sale-card-header" style={{ marginBottom: "0.6rem" }}>
+                      <span className="sale-card-name" style={{ fontSize: "0.95rem" }}>
+                        {item.batchName}
+                      </span>
+                      <span className="sale-card-date">
+                        {formatBengaliDate(item.date, { day: "numeric", month: "short", includeYear: true })}
+                      </span>
+                    </div>
+
+                    <div style={{ fontSize: "0.8rem", color: "var(--text-secondary)", marginBottom: "0.85rem", paddingLeft: "0.2rem" }}>
+                      {item.detail}
+                    </div>
+
+                    <div className="sale-card-grid">
+                      <div className="sale-card-stat">
+                        <div className="sale-card-stat-label">মোট</div>
+                        <div className="sale-card-stat-value">{formatCurrency(item.total)}</div>
+                      </div>
+                      <div className="sale-card-stat">
+                        <div className="sale-card-stat-label">পরিশোধ</div>
+                        <div className="sale-card-stat-value" style={{ color: "var(--accent-green)" }}>
+                          {formatCurrency(item.paid)}
+                        </div>
+                      </div>
+                      <div className="sale-card-stat">
+                        <div className="sale-card-stat-label">বকেয়া</div>
+                        <div className="sale-card-stat-value" style={{ color: item.due > 0 ? "var(--accent-red)" : "var(--accent-green)" }}>
+                          {formatCurrency(item.due)}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="sale-card-footer" style={{ display: "flex", justifyContent: "flex-end", alignItems: "center" }}>
+                      <span
+                        className={`badge ${item.type === "meat" ? "badge-green" : "badge-purple"}`}
+                        style={{ fontSize: "0.68rem" }}
+                      >
+                        {typeBn[item.type] || item.type}
+                      </span>
+                    </div>
+                  </div>
                 ))}
-              </tbody>
-            </table>
+              </div>
+            </>
           )}
         </div>
       </div>
