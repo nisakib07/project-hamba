@@ -14,7 +14,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "লাভের হিসাব",
+    title: "গরু ব্যবসা",
   },
 };
 
