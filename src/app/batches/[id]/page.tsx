@@ -775,7 +775,11 @@ export default function BatchDetailPage() {
       toast.success("PDF ডাউনলোড সফল হয়েছে!", { id: toastId });
     } catch (error) {
       console.error("PDF Export Error:", error);
-      toast.error("PDF তৈরি করতে সমস্যা হয়েছে", { id: toastId });
+      toast.dismiss(toastId);
+      toast.error("সরাসরি ডাউনলোড ব্যর্থ হয়েছে। বিকল্প পদ্ধতিতে প্রিন্ট ডায়ালগ চালু হচ্ছে...", { duration: 4000 });
+      setTimeout(() => {
+        window.print();
+      }, 1000);
     } finally {
       document.body.classList.remove("pdf-exporting");
     }
@@ -841,7 +845,7 @@ export default function BatchDetailPage() {
               {tab === "sales" && (
                 <button
                   className="btn-icon"
-                  onClick={handleDownloadPdf}
+                  onClick={() => setModal("pdfOptions")}
                   style={{ padding: "0.25rem", color: "var(--text-primary)" }}
                 >
                   <HiOutlinePrinter size={iconSize} />
@@ -919,7 +923,7 @@ export default function BatchDetailPage() {
             {tab === "sales" && (
               <button
                 className="btn btn-secondary btn-sm"
-                onClick={handleDownloadPdf}
+                onClick={() => setModal("pdfOptions")}
               >
                 <HiOutlinePrinter size={iconSize} /> PDF ডাউনলোড
               </button>
@@ -2697,6 +2701,96 @@ export default function BatchDetailPage() {
               </button>
             </div>
           )}
+        </Modal>
+
+        {/* PDF/Print Options Modal */}
+        <Modal
+          isOpen={modal === "pdfOptions"}
+          onClose={() => setModal("")}
+          title="রিপোর্ট ডাউনলোড / প্রিন্ট"
+        >
+          <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+            <p style={{ fontSize: "0.9rem", color: "var(--text-secondary)", lineHeight: "1.5" }}>
+              আপনার ডিভাইসের জন্য সুবিধাজনক পদ্ধতিটি নির্বাচন করুন:
+            </p>
+            
+            <button
+              type="button"
+              className="hover-scale"
+              onClick={async () => {
+                setModal("");
+                // Wait for modal animation to close
+                await new Promise((resolve) => setTimeout(resolve, 300));
+                handleDownloadPdf();
+              }}
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "flex-start",
+                padding: "1rem 1.25rem",
+                background: "linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.05) 100%)",
+                border: "1px solid rgba(16, 185, 129, 0.2)",
+                borderRadius: "12px",
+                cursor: "pointer",
+                textAlign: "left",
+                width: "100%",
+                transition: "all 0.2s ease"
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontWeight: 700, color: "var(--accent-green)", fontSize: "1rem", marginBottom: "0.35rem" }}>
+                📥 সরাসরি PDF ডাউনলোড (Direct Download)
+              </div>
+              <div style={{ fontSize: "0.8rem", color: "var(--text-secondary)", lineHeight: "1.4" }}>
+                মোবাইলে সরাসরি PDF ফাইল নামিয়ে নিন। বেশিরভাগ ব্রাউজারে এটি ভালো কাজ করে।
+              </div>
+            </button>
+
+            <button
+              type="button"
+              className="hover-scale"
+              onClick={() => {
+                setModal("");
+                setTimeout(() => {
+                  window.print();
+                }, 350);
+              }}
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "flex-start",
+                padding: "1rem 1.25rem",
+                background: "linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(37, 99, 235, 0.05) 100%)",
+                border: "1px solid rgba(59, 130, 246, 0.2)",
+                borderRadius: "12px",
+                cursor: "pointer",
+                textAlign: "left",
+                width: "100%",
+                transition: "all 0.2s ease"
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontWeight: 700, color: "var(--accent-blue)", fontSize: "1rem", marginBottom: "0.35rem" }}>
+                🖨️ সিস্টেম প্রিন্ট / PDF সংরক্ষণ (Print / Save as PDF)
+              </div>
+              <div style={{ fontSize: "0.8rem", color: "var(--text-secondary)", lineHeight: "1.4" }}>
+                যাদের ফোনে সরাসরি ডাউনলোড কাজ করে না (যেমন: Xiaomi, Huawei, Oppo, Vivo, বা যেকোনো mobile WebView), তারা এই অপশনটি দিয়ে সহজেই <strong>Save as PDF</strong> বা প্রিন্ট করতে পারবেন।
+              </div>
+            </button>
+
+            <button
+              type="button"
+              className="btn"
+              onClick={() => setModal("")}
+              style={{
+                marginTop: "0.5rem",
+                background: "var(--bg-secondary)",
+                border: "1px solid var(--border-color)",
+                color: "var(--text-primary)",
+                width: "100%"
+              }}
+            >
+              বাতিল করুন
+            </button>
+          </div>
         </Modal>
 
         {/* Delete Confirmation */}
