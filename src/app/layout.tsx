@@ -3,10 +3,18 @@ import "./globals.css";
 import { Toaster } from "react-hot-toast";
 import Sidebar from "@/components/Sidebar";
 import BottomNav from "@/components/BottomNav";
+import ServiceWorkerRegistrar from "@/components/ServiceWorkerRegistrar";
 
 export const metadata: Metadata = {
-  title: "গরু ব্যাচ লাভ ম্যানেজার",
+  title: "গরু ব্যবসা",
   description: "গরুর গোশত ব্যবসার লাভ-ক্ষতি হিসাব। প্রতিটি ব্যাচের খরচ, বিক্রি ও মুনাফা ট্র্যাক করুন।",
+  manifest: "/manifest.json",
+  themeColor: "#0f172a",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "লাভের হিসাব",
+  },
 };
 
 export default function RootLayout({
@@ -16,6 +24,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="bn">
+      <head>
+        <link rel="apple-touch-icon" href="/icon-512x512.png" />
+        <meta name="mobile-web-app-capable" content="yes" />
+      </head>
       <body>
         <Toaster
           position="top-right"
@@ -47,6 +59,7 @@ export default function RootLayout({
           {children}
         </main>
         <BottomNav />
+        <ServiceWorkerRegistrar />
       </body>
     </html>
   );

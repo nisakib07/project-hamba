@@ -28,7 +28,7 @@ export default function Sidebar() {
       <div className="mobile-top-bar no-print" style={{ display: "none" }}>
         <Link href="/" style={{ display: "flex", alignItems: "center", gap: "0.5rem", textDecoration: "none", color: "var(--text-primary)", fontWeight: 700 }}>
           <GiCow size={22} style={{ color: "var(--accent-green)" }} />
-          গরু ব্যাচ
+          গরু ব্যবসা
         </Link>
         <button className="btn-icon" onClick={() => setIsOpen(!isOpen)}>
           {isOpen ? <HiOutlineX size={22} /> : <HiOutlineMenu size={22} />}
@@ -83,16 +83,7 @@ export default function Sidebar() {
             </div>
             <div>
               <div style={{ fontWeight: 700, fontSize: "0.95rem" }}>
-                গরু ব্যাচ
-              </div>
-              <div
-                style={{
-                  fontSize: "0.7rem",
-                  color: "var(--text-muted)",
-                  fontWeight: 500,
-                }}
-              >
-                লাভ ম্যানেজার
+                গরু ব্যবসা
               </div>
             </div>
           </Link>
@@ -140,7 +131,7 @@ export default function Sidebar() {
             color: "var(--text-muted)",
           }}
         >
-          <div>গরু ব্যাচ লাভ ম্যানেজার</div>
+          <div>গরু ব্যবসা</div>
           <div style={{ marginTop: "0.25rem", opacity: 0.7 }}>v1.0.0</div>
         </div>
       </aside>
