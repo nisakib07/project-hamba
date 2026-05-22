@@ -121,8 +121,15 @@ export default function BatchDetailClient({
       due: number;
       paid: number;
       total: number;
+      kgQuantity?: number;
+      pricePerKg?: number;
+      quantity?: number;
+      price?: number;
+      label: string;
     }[];
   } | null>(null);
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
+  const [editItemForm, setEditItemForm] = useState<{ kgQuantity: string; pricePerKg: string; quantity: string; price: string }>({ kgQuantity: "", pricePerKg: "", quantity: "", price: "" });
   const [deleteTarget, setDeleteTarget] = useState<{
     name: string;
     items: { id: string; type: string }[];
@@ -464,6 +471,46 @@ export default function BatchDetailClient({
     setCollectTarget(null);
     setCollectAmt("");
     fetchData();
+  };
+
+  const handleEditItem = async (item: typeof collectTarget extends null ? never : NonNullable<typeof collectTarget>["items"][number]) => {
+    if (!collectTarget) return;
+    const url =
+      item.type === "meat"
+        ? `/api/batches/${id}/meat-sales/${item.id}`
+        : `/api/batches/${id}/byproducts/${item.id}`;
+
+    let body: Record<string, number>;
+    if (item.type === "meat") {
+      const kg = Number(editItemForm.kgQuantity);
+      const ppk = Number(editItemForm.pricePerKg);
+      if (!kg || kg <= 0 || !ppk || ppk <= 0) { toast.error("সঠিক পরিমাণ ও দাম দিন"); return; }
+      const newTotal = kg * ppk;
+      const newDue = newTotal - item.paid;
+      body = { kgQuantity: kg, pricePerKg: ppk, totalPrice: newTotal, paidAmount: item.paid, dueAmount: Math.max(0, newDue) };
+    } else {
+      const qty = Number(editItemForm.quantity);
+      const prc = Number(editItemForm.price);
+      if (!prc || prc <= 0) { toast.error("সঠিক দাম দিন"); return; }
+      const newTotal = (qty || 1) * prc;
+      const newDue = newTotal - item.paid;
+      body = { quantity: qty || 1, price: prc, total: newTotal, paidAmount: item.paid, dueAmount: Math.max(0, newDue) };
+    }
+
+    const res = await fetch(url, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const json = await res.json();
+    if (json.success) {
+      toast.success("বিক্রি আপডেট হয়েছে");
+      setEditingItemId(null);
+      setCollectTarget(null);
+      fetchData();
+    } else {
+      toast.error(json.error || "আপডেট ব্যর্থ হয়েছে");
+    }
   };
 
   const filteredMeat = meatSales.filter((s) =>
@@ -887,7 +934,7 @@ export default function BatchDetailClient({
                         </div>
                         <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
                           <span style={{ color: "var(--accent-red)", fontWeight: 700 }}>{fmt(d.due)}</span>
-                          <button className="btn-collect" onClick={() => { setCollectTarget({ name: d.name, total: d.total, paid: d.paid, due: d.due, items: [{ id: d.id, type: d.type === "Meat" ? "meat" : "byproduct", due: d.due, paid: d.paid, total: d.total }] }); setCollectAmt(""); }}>
+                          <button className="btn-collect" onClick={() => { setCollectTarget({ name: d.name, total: d.total, paid: d.paid, due: d.due, items: [{ id: d.id, type: d.type === "Meat" ? "meat" : "byproduct", due: d.due, paid: d.paid, total: d.total, label: d.name }] }); setCollectAmt(""); setEditingItemId(null); }}>
                             আদায়
                           </button>
                         </div>
@@ -902,14 +949,14 @@ export default function BatchDetailClient({
           {/* UNIFIED SALES TAB */}
           {tab === "sales" &&
             (() => {
-              const customerMap = new Map<string, { name: string; items: { label: string; type: "meat" | "byproduct"; id: string; total: number; paid: number; due: number; detail: string }[]; totalAmount: number; totalPaid: number; totalDue: number }>();
+              const customerMap = new Map<string, { name: string; items: { label: string; type: "meat" | "byproduct"; id: string; total: number; paid: number; due: number; detail: string; kgQuantity?: number; pricePerKg?: number; quantity?: number; price?: number }[]; totalAmount: number; totalPaid: number; totalDue: number }>();
               const normName = (n: string) => n.trim().toLowerCase();
 
               filteredMeat.forEach((s) => {
                 const key = normName(s.customerName);
                 if (!customerMap.has(key)) customerMap.set(key, { name: s.customerName, items: [], totalAmount: 0, totalPaid: 0, totalDue: 0 });
                 const c = customerMap.get(key)!;
-                c.items.push({ label: `${toBengaliDigits(s.kgQuantity)} কেজি`, type: "meat", id: s._id, total: s.totalPrice, paid: s.paidAmount, due: s.dueAmount, detail: `${toBengaliDigits(s.kgQuantity)} কেজি × ${fmt(s.pricePerKg)}` });
+                c.items.push({ label: `${toBengaliDigits(s.kgQuantity)} কেজি`, type: "meat", id: s._id, total: s.totalPrice, paid: s.paidAmount, due: s.dueAmount, detail: `${toBengaliDigits(s.kgQuantity)} কেজি × ${fmt(s.pricePerKg)}`, kgQuantity: s.kgQuantity, pricePerKg: s.pricePerKg });
                 c.totalAmount += s.totalPrice;
                 c.totalPaid += s.paidAmount;
                 c.totalDue += s.dueAmount;
@@ -920,7 +967,7 @@ export default function BatchDetailClient({
                 const key = normName(name);
                 if (!customerMap.has(key)) customerMap.set(key, { name, items: [], totalAmount: 0, totalPaid: 0, totalDue: 0 });
                 const c = customerMap.get(key)!;
-                c.items.push({ label: `${toBengaliDigits(b.quantity)} ${itemTypeBn[b.itemType] || b.itemType}`, type: "byproduct", id: b._id, total: b.total, paid: b.paidAmount, due: b.dueAmount, detail: `${toBengaliDigits(b.quantity)} × ${fmt(b.price)}` });
+                c.items.push({ label: `${toBengaliDigits(b.quantity)} ${itemTypeBn[b.itemType] || b.itemType}`, type: "byproduct", id: b._id, total: b.total, paid: b.paidAmount, due: b.dueAmount, detail: `${toBengaliDigits(b.quantity)} × ${fmt(b.price)}`, quantity: b.quantity, price: b.price });
                 c.totalAmount += b.total;
                 c.totalPaid += b.paidAmount;
                 c.totalDue += b.dueAmount;
@@ -983,7 +1030,7 @@ export default function BatchDetailClient({
                                 <td className="no-print">
                                   <div className="action-group">
                                     {c.totalDue > 0 && (
-                                      <button className="btn-collect" onClick={() => { setCollectTarget({ name: c.name, total: c.totalAmount, paid: c.totalPaid, due: c.totalDue, items: c.items.map((i) => ({ id: i.id, type: i.type, due: i.due, paid: i.paid, total: i.total })) }); setCollectAmt(""); }}>আদায়</button>
+                                      <button className="btn-collect" onClick={() => { setCollectTarget({ name: c.name, total: c.totalAmount, paid: c.totalPaid, due: c.totalDue, items: c.items.map((i) => ({ id: i.id, type: i.type, due: i.due, paid: i.paid, total: i.total, label: i.label, kgQuantity: (i as any).kgQuantity, pricePerKg: (i as any).pricePerKg, quantity: (i as any).quantity, price: (i as any).price })) }); setCollectAmt(""); setEditingItemId(null); }}>আদায়</button>
                                     )}
                                     <button className="btn-icon" onClick={() => setDeleteTarget({ name: c.name, items: c.items.map((i) => ({ id: i.id, type: i.type })) })} style={{ color: "var(--accent-red)", fontSize: "0.85rem" }}>🗑</button>
                                   </div>
@@ -1032,7 +1079,7 @@ export default function BatchDetailClient({
                                 <span className="sale-card-kg" style={{ fontSize: "0.75rem" }}>{c.items.map((i) => i.detail).join(" + ")}</span>
                                 <div className="action-group">
                                   {c.totalDue > 0 && (
-                                    <button className="btn-collect" onClick={() => { setCollectTarget({ name: c.name, total: c.totalAmount, paid: c.totalPaid, due: c.totalDue, items: c.items.map((i) => ({ id: i.id, type: i.type, due: i.due, paid: i.paid, total: i.total })) }); setCollectAmt(""); }}>আদায়</button>
+                                    <button className="btn-collect" onClick={() => { setCollectTarget({ name: c.name, total: c.totalAmount, paid: c.totalPaid, due: c.totalDue, items: c.items.map((i) => ({ id: i.id, type: i.type, due: i.due, paid: i.paid, total: i.total, label: i.label, kgQuantity: (i as any).kgQuantity, pricePerKg: (i as any).pricePerKg, quantity: (i as any).quantity, price: (i as any).price })) }); setCollectAmt(""); setEditingItemId(null); }}>আদায়</button>
                                   )}
                                   <button className="btn-icon" onClick={() => setDeleteTarget({ name: c.name, items: c.items.map((i) => ({ id: i.id, type: i.type })) })} style={{ color: "var(--accent-red)", fontSize: "0.85rem" }}>🗑</button>
                                 </div>
@@ -1243,7 +1290,7 @@ export default function BatchDetailClient({
         </Modal>
 
         {/* Collect Payment Modal */}
-        <Modal isOpen={!!collectTarget} onClose={() => setCollectTarget(null)} title="টাকা আদায়">
+        <Modal isOpen={!!collectTarget} onClose={() => { setCollectTarget(null); setEditingItemId(null); }} title="টাকা আদায়">
           {collectTarget && (
             <div>
               <div style={{ padding: "1rem", background: "var(--bg-secondary)", borderRadius: "10px", marginBottom: "1rem" }}>
@@ -1252,16 +1299,142 @@ export default function BatchDetailClient({
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.5rem" }}><span style={{ color: "var(--text-muted)" }}>আগে দিয়েছে</span><span style={{ color: "var(--accent-green)", fontWeight: 600 }}>{fmt(collectTarget.paid)}</span></div>
                 <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "var(--text-muted)" }}>বাকি আছে</span><span style={{ color: "var(--accent-red)", fontWeight: 700, fontSize: "1.1rem" }}>{fmt(collectTarget.due)}</span></div>
               </div>
-              <div className="form-group">
-                <label className="form-label">এখন কত আদায় করছেন (৳)</label>
-                <input type="number" className="form-input" value={collectAmt} onChange={(e) => setCollectAmt(e.target.value)} placeholder={`সর্বোচ্চ ${collectTarget.due}`} max={collectTarget.due} autoFocus />
-              </div>
-              {collectAmt && Number(collectAmt) > 0 && (
-                <div style={{ padding: "0.75rem", background: "rgba(16, 185, 129, 0.1)", borderRadius: "10px", marginBottom: "1rem", fontSize: "0.85rem", border: "1px solid rgba(16, 185, 129, 0.2)" }}>
-                  আদায়ের পর: পেইড = <strong style={{ color: "var(--accent-green)" }}>{fmt(collectTarget.paid + Number(collectAmt))}</strong> | বাকি = <strong style={{ color: Number(collectAmt) >= collectTarget.due ? "var(--accent-green)" : "var(--accent-yellow)" }}>{fmt(collectTarget.due - Number(collectAmt))}</strong>
+
+              {/* Editable Items List */}
+              <div style={{ marginBottom: "1rem" }}>
+                <label className="form-label" style={{ fontWeight: "700", marginBottom: "0.5rem", display: "block" }}>ক্রয়কৃত আইটেমসমূহ ও সংশোধন:</label>
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+                  {collectTarget.items.map((item) => {
+                    const isEditing = editingItemId === item.id;
+                    const isMeat = item.type === "meat";
+
+                    return (
+                      <div key={item.id} style={{ padding: "0.75rem", background: "var(--bg-card)", border: "1px solid var(--border-color)", borderRadius: "8px" }}>
+                        {isEditing ? (
+                          <div>
+                            <div style={{ display: "flex", gap: "0.5rem", marginBottom: "0.5rem" }}>
+                              {isMeat ? (
+                                <>
+                                  <div style={{ flex: 1 }}>
+                                    <label className="form-label" style={{ fontSize: "0.75rem" }}>পরিমাণ (কেজি)</label>
+                                    <input
+                                      type="number"
+                                      step="0.01"
+                                      className="form-input"
+                                      style={{ height: "32px", fontSize: "0.85rem" }}
+                                      value={editItemForm.kgQuantity}
+                                      onChange={(e) => setEditItemForm({ ...editItemForm, kgQuantity: e.target.value })}
+                                    />
+                                  </div>
+                                  <div style={{ flex: 1 }}>
+                                    <label className="form-label" style={{ fontSize: "0.75rem" }}>দাম/কেজি (৳)</label>
+                                    <input
+                                      type="number"
+                                      className="form-input"
+                                      style={{ height: "32px", fontSize: "0.85rem" }}
+                                      value={editItemForm.pricePerKg}
+                                      onChange={(e) => setEditItemForm({ ...editItemForm, pricePerKg: e.target.value })}
+                                    />
+                                  </div>
+                                </>
+                              ) : (
+                                <>
+                                  <div style={{ flex: 1 }}>
+                                    <label className="form-label" style={{ fontSize: "0.75rem" }}>পরিমাণ</label>
+                                    <input
+                                      type="number"
+                                      className="form-input"
+                                      style={{ height: "32px", fontSize: "0.85rem" }}
+                                      value={editItemForm.quantity}
+                                      onChange={(e) => setEditItemForm({ ...editItemForm, quantity: e.target.value })}
+                                    />
+                                  </div>
+                                  <div style={{ flex: 1 }}>
+                                    <label className="form-label" style={{ fontSize: "0.75rem" }}>দাম (৳)</label>
+                                    <input
+                                      type="number"
+                                      className="form-input"
+                                      style={{ height: "32px", fontSize: "0.85rem" }}
+                                      value={editItemForm.price}
+                                      onChange={(e) => setEditItemForm({ ...editItemForm, price: e.target.value })}
+                                    />
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                            <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.5rem" }}>
+                              <button
+                                type="button"
+                                className="btn btn-sm"
+                                style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-color)", padding: "2px 8px", fontSize: "0.75rem" }}
+                                onClick={() => setEditingItemId(null)}
+                              >
+                                বাতিল
+                              </button>
+                              <button
+                                type="button"
+                                className="btn btn-primary btn-sm"
+                                style={{ padding: "2px 8px", fontSize: "0.75rem" }}
+                                onClick={() => handleEditItem(item)}
+                              >
+                                সেইভ করুন
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                            <div>
+                              <span style={{ fontWeight: 600, fontSize: "0.9rem" }}>
+                                {isMeat ? "🥩 গোশত" : `📦 ${itemTypeBn[item.label] || item.label}`}
+                              </span>
+                              <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "0.15rem" }}>
+                                {isMeat 
+                                  ? `${toBengaliDigits(item.kgQuantity || 0)} কেজি × ${fmt(item.pricePerKg || 0)} = ${fmt(item.total)}`
+                                  : `${toBengaliDigits(item.quantity || 0)} টি × ${fmt(item.price || 0)} = ${fmt(item.total)}`
+                                }
+                                {" | "} পেইড: <span style={{ color: "var(--accent-green)" }}>{fmt(item.paid)}</span>
+                                {" | "} বাকি: <span style={{ color: "var(--accent-red)" }}>{fmt(item.due)}</span>
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              className="btn-icon"
+                              style={{ color: "var(--accent-blue)", padding: "4px" }}
+                              onClick={() => {
+                                setEditingItemId(item.id);
+                                setEditItemForm({
+                                  kgQuantity: String(item.kgQuantity || ""),
+                                  pricePerKg: String(item.pricePerKg || ""),
+                                  quantity: String(item.quantity || "1"),
+                                  price: String(item.price || ""),
+                                });
+                              }}
+                              title="সংশোধন করুন"
+                            >
+                              <HiOutlinePencil size={16} />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
+              </div>
+
+              {collectTarget.due > 0 && (
+                <>
+                  <div className="form-group">
+                    <label className="form-label">এখন কত আদায় করছেন (৳)</label>
+                    <input type="number" className="form-input" value={collectAmt} onChange={(e) => setCollectAmt(e.target.value)} placeholder={`সর্বোচ্চ ${collectTarget.due}`} max={collectTarget.due} autoFocus />
+                  </div>
+                  {collectAmt && Number(collectAmt) > 0 && (
+                    <div style={{ padding: "0.75rem", background: "rgba(16, 185, 129, 0.1)", borderRadius: "10px", marginBottom: "1rem", fontSize: "0.85rem", border: "1px solid rgba(16, 185, 129, 0.2)" }}>
+                      আদায়ের পর: পেইড = <strong style={{ color: "var(--accent-green)" }}>{fmt(collectTarget.paid + Number(collectAmt))}</strong> | বাকি = <strong style={{ color: Number(collectAmt) >= collectTarget.due ? "var(--accent-green)" : "var(--accent-yellow)" }}>{fmt(collectTarget.due - Number(collectAmt))}</strong>
+                    </div>
+                  )}
+                  <button className="btn btn-primary" style={{ width: "100%" }} onClick={collectPayment} disabled={!collectAmt || Number(collectAmt) <= 0}>টাকা আদায় করুন</button>
+                </>
               )}
-              <button className="btn btn-primary" style={{ width: "100%" }} onClick={collectPayment} disabled={!collectAmt || Number(collectAmt) <= 0}>টাকা আদায় করুন</button>
             </div>
           )}
         </Modal>
