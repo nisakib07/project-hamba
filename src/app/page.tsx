@@ -5,6 +5,8 @@ import MeatSale from "@/models/MeatSale";
 import ByproductSale from "@/models/ByproductSale";
 import Expense from "@/models/Expense";
 
+export const dynamic = "force-dynamic";
+
 interface BatchSummary {
   _id: string;
   batchName: string;
