@@ -134,7 +134,7 @@ export default function NewBatchPage() {
               />
             </div>
             <div className="form-group">
-              <label className="form-label">ক্রয়ের তারিখ *</label>
+              <label className="form-label">জবাইয়ের তারিখ *</label>
               <input
                 type="date"
                 name="purchaseDate"
