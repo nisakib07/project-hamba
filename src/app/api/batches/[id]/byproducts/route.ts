@@ -46,11 +46,13 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     // Merge with existing sale if requested
     if (body.mergeIfExisting && body.buyerName) {
       const buyerName = body.buyerName.trim();
-      // Find all byproduct sales for this batch+itemType, then match name case-insensitively
-      const allSales = await ByproductSale.find({ batchId: id, itemType: body.itemType });
-      const existingSale = allSales.find(
-        (s) => (s.buyerName || "").trim().toLowerCase() === buyerName.toLowerCase()
-      );
+      // Find the matched existing byproduct sale directly via indexed lookup to optimize latency
+      const escapedName = buyerName.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&");
+      const existingSale = await ByproductSale.findOne({
+        batchId: id,
+        itemType: body.itemType,
+        buyerName: { $regex: new RegExp("^" + escapedName + "$", "i") }
+      });
 
       if (existingSale) {
         existingSale.quantity = (existingSale.quantity || 1) + (body.quantity || 1);

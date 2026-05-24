@@ -54,11 +54,12 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     // Merge with existing sale if requested
     if (body.mergeIfExisting) {
       const customerName = (body.customerName || "").trim();
-      // Find all meat sales for this batch, then match name case-insensitively
-      const allSales = await MeatSale.find({ batchId: id });
-      const existingSale = allSales.find(
-        (s) => (s.customerName || "").trim().toLowerCase() === customerName.toLowerCase()
-      );
+      // Find the matched existing customer sale directly via indexed lookup to optimize latency
+      const escapedName = customerName.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&");
+      const existingSale = await MeatSale.findOne({
+        batchId: id,
+        customerName: { $regex: new RegExp("^" + escapedName + "$", "i") }
+      });
 
       if (existingSale) {
         existingSale.kgQuantity += body.kgQuantity;
