@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import mongoose from "mongoose";
 import dbConnect from "@/lib/mongodb";
 import MeatSale from "@/models/MeatSale";
 import CowBatch from "@/models/CowBatch";
@@ -12,6 +13,14 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     await dbConnect();
     const { id } = await params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return NextResponse.json(
+        { success: false, error: "Invalid batch ID" },
+        { status: 400 }
+      );
+    }
+
     const sales = await MeatSale.find({ batchId: id }).sort({ date: -1 });
     return NextResponse.json({ success: true, data: sales });
   } catch (error) {
@@ -29,6 +38,13 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     await dbConnect();
     const { id } = await params;
 
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return NextResponse.json(
+        { success: false, error: "Invalid batch ID" },
+        { status: 400 }
+      );
+    }
+
     // Verify batch exists
     const batch = await CowBatch.findById(id);
     if (!batch) {
@@ -39,22 +55,40 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     const body = await request.json();
-    body.batchId = id;
 
-    // Auto-fill pricePerKg from batch if not provided
-    if (!body.pricePerKg) {
-      body.pricePerKg = batch.baseMeatPricePerKg;
+    // Whitelist and validate fields
+    const customerName = (body.customerName || "").trim();
+    const kgQuantity = Number(body.kgQuantity);
+    const pricePerKg = Number(body.pricePerKg) || batch.baseMeatPricePerKg;
+    const paidAmount = Number(body.paidAmount) || 0;
+    const date = body.date || new Date();
+    const mergeIfExisting = body.mergeIfExisting || false;
+
+    if (!kgQuantity || kgQuantity <= 0 || isNaN(kgQuantity)) {
+      return NextResponse.json(
+        { success: false, error: "Valid kgQuantity is required" },
+        { status: 400 }
+      );
+    }
+    if (!pricePerKg || pricePerKg <= 0 || isNaN(pricePerKg)) {
+      return NextResponse.json(
+        { success: false, error: "Valid pricePerKg is required" },
+        { status: 400 }
+      );
+    }
+    if (paidAmount < 0) {
+      return NextResponse.json(
+        { success: false, error: "paidAmount cannot be negative" },
+        { status: 400 }
+      );
     }
 
     // Calculate derived fields
-    const currentTotalPrice = body.kgQuantity * body.pricePerKg;
-    const currentPaidAmount = body.paidAmount || 0;
-    const currentDueAmount = currentTotalPrice - currentPaidAmount;
+    const currentTotalPrice = kgQuantity * pricePerKg;
+    const currentDueAmount = currentTotalPrice - paidAmount;
 
     // Merge with existing sale if requested
-    if (body.mergeIfExisting) {
-      const customerName = (body.customerName || "").trim();
-      // Find the matched existing customer sale directly via indexed lookup to optimize latency
+    if (mergeIfExisting && customerName) {
       const escapedName = customerName.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&");
       const existingSale = await MeatSale.findOne({
         batchId: id,
@@ -62,9 +96,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       });
 
       if (existingSale) {
-        existingSale.kgQuantity += body.kgQuantity;
+        existingSale.kgQuantity += kgQuantity;
         existingSale.totalPrice += currentTotalPrice;
-        existingSale.paidAmount += currentPaidAmount;
+        existingSale.paidAmount += paidAmount;
 
         // Weighted average price so pre-save hook calculates correct total
         if (existingSale.kgQuantity > 0) {
@@ -77,10 +111,19 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       }
     }
 
-    body.totalPrice = currentTotalPrice;
-    body.dueAmount = currentDueAmount;
+    const saleData = {
+      batchId: id,
+      batchName: batch.batchName,
+      customerName,
+      kgQuantity,
+      pricePerKg,
+      paidAmount,
+      totalPrice: currentTotalPrice,
+      dueAmount: currentDueAmount,
+      date,
+    };
 
-    const sale = await MeatSale.create(body);
+    const sale = await MeatSale.create(saleData);
     return NextResponse.json({ success: true, data: sale }, { status: 201 });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Server error";

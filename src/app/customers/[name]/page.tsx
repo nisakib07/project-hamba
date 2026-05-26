@@ -71,6 +71,14 @@ async function getCustomerData(name: string): Promise<CustomerData> {
   };
 }
 
+export const revalidate = 0;
+
+export async function generateMetadata({ params }: { params: Promise<{ name: string }> }) {
+  const resolvedParams = await params;
+  const name = decodeURIComponent(resolvedParams.name);
+  return { title: `${name} | ক্রেতা ড্যাশবোর্ড` };
+}
+
 export default async function CustomerDashboardPage({ params }: { params: Promise<{ name: string }> }) {
   const resolvedParams = await params;
   const customerName = decodeURIComponent(resolvedParams.name);

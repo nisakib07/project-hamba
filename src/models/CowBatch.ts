@@ -96,6 +96,9 @@ const CowBatchSchema = new Schema<ICowBatch>(
   }
 );
 
+CowBatchSchema.index({ createdAt: -1 });
+CowBatchSchema.index({ status: 1 });
+
 const CowBatch: Model<ICowBatch> =
   mongoose.models.CowBatch || mongoose.model<ICowBatch>("CowBatch", CowBatchSchema);
 

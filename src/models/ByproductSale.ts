@@ -31,12 +31,12 @@ const ByproductSaleSchema = new Schema<IByproductSale>(
     quantity: {
       type: Number,
       default: 1,
-      min: 0,
+      min: [0.01, "Quantity must be greater than 0"],
     },
     price: {
       type: Number,
       required: [true, "Price is required"],
-      min: 0,
+      min: [0.01, "Price must be greater than 0"],
     },
     total: {
       type: Number,

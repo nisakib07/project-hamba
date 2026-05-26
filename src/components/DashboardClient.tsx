@@ -62,6 +62,10 @@ export default function DashboardClient({ data, customers }: DashboardClientProp
     return customerList.filter((customer) => sanitize(customer).includes(normalized));
   }, [searchQuery, customerList]);
 
+  const activeBatch = useMemo(() => {
+    return dashboardData.batchSummaries.find((b) => b.status === "active");
+  }, [dashboardData.batchSummaries]);
+
   const fetchDashboard = useCallback(async () => {
     setLoading(true);
     try {
@@ -202,11 +206,11 @@ export default function DashboardClient({ data, customers }: DashboardClientProp
 
         {/* Mobile Quick Actions */}
         <div className="quick-actions">
-          {dashboardData.batchSummaries.find((b) => b.status === "active") && (
-            <Link href={`/batches/${dashboardData.batchSummaries.find((b) => b.status === "active")!._id}`} className="quick-action-card">
+          {activeBatch && (
+            <Link href={`/batches/${activeBatch._id}`} className="quick-action-card">
               <div className="quick-action-icon" style={{ background: "rgba(16,185,129,0.15)" }}>🐄</div>
               <div>
-                <div className="quick-action-label">{dashboardData.batchSummaries.find((b) => b.status === "active")!.batchName}</div>
+                <div className="quick-action-label">{activeBatch.batchName}</div>
                 <div className="quick-action-sub">সর্বশেষ ব্যাচ</div>
               </div>
             </Link>

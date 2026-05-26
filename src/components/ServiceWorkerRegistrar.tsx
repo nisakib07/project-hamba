@@ -5,21 +5,24 @@ import { useEffect } from "react";
 export default function ServiceWorkerRegistrar() {
   useEffect(() => {
     if (process.env.NODE_ENV === "development") {
-      // In development mode, unregister any active service worker to avoid caching HMR and causing route freezes.
-      if ("serviceWorker" in navigator) {
+      const swCleaned = sessionStorage.getItem("sw-cleaned");
+      if (!swCleaned && "serviceWorker" in navigator) {
         navigator.serviceWorker.getRegistrations().then((registrations) => {
-          for (const registration of registrations) {
-            registration.unregister().then((success) => {
-              if (success) {
-                console.log("Dev: Service worker unregistered successfully");
-                // Clear caches so stale assets are removed
-                caches.keys().then((keys) => {
-                  Promise.all(keys.map((key) => caches.delete(key))).then(() => {
-                    console.log("Dev: Cache storage cleared");
-                    window.location.reload();
-                  });
+          if (registrations.length > 0) {
+            sessionStorage.setItem("sw-cleaned", "true");
+            Promise.all(
+              registrations.map((registration) =>
+                registration.unregister().then((success) => {
+                  if (success) console.log("Dev: Service worker unregistered successfully");
+                })
+              )
+            ).then(() => {
+              caches.keys().then((keys) => {
+                Promise.all(keys.map((key) => caches.delete(key))).then(() => {
+                  console.log("Dev: Cache storage cleared");
+                  window.location.reload();
                 });
-              }
+              });
             });
           }
         });

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import mongoose from "mongoose";
 import dbConnect from "@/lib/mongodb";
 import CowBatch from "@/models/CowBatch";
 import MeatSale from "@/models/MeatSale";
@@ -15,6 +16,14 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     await dbConnect();
     const { id } = await params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return NextResponse.json(
+        { success: false, error: "Invalid batch ID" },
+        { status: 400 }
+      );
+    }
+
     const batch = await CowBatch.findById(id).lean();
     if (!batch) {
       return NextResponse.json(
@@ -55,8 +64,29 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
     await dbConnect();
     const { id } = await params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return NextResponse.json(
+        { success: false, error: "Invalid batch ID" },
+        { status: 400 }
+      );
+    }
+
     const body = await request.json();
-    const batch = await CowBatch.findByIdAndUpdate(id, body, {
+
+    // Whitelist allowed fields
+    const allowed: Record<string, unknown> = {};
+    const allowedKeys = [
+      "batchName", "purchaseDate", "buyingCost", "foodCost",
+      "butcherCost", "transportCost", "otherExpenses",
+      "baseMeatPricePerKg", "totalMeatKg", "chamraPrice",
+      "vuriPrice", "paPrice", "status", "notes",
+    ];
+    for (const key of allowedKeys) {
+      if (body[key] !== undefined) allowed[key] = body[key];
+    }
+
+    const batch = await CowBatch.findByIdAndUpdate(id, allowed, {
       new: true,
       runValidators: true,
     });
@@ -81,6 +111,14 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
     await dbConnect();
     const { id } = await params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return NextResponse.json(
+        { success: false, error: "Invalid batch ID" },
+        { status: 400 }
+      );
+    }
+
     const batch = await CowBatch.findByIdAndDelete(id);
     if (!batch) {
       return NextResponse.json(

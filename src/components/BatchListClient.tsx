@@ -9,6 +9,7 @@ import {
 } from "react-icons/hi";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import PullToRefresh from "@/components/PullToRefresh";
+import ConfirmModal from "@/components/ConfirmModal";
 import toast from "react-hot-toast";
 import { toBengaliDigits, formatCurrency, formatBengaliDate } from "@/lib/bnUtils";
 
@@ -62,15 +63,11 @@ export default function BatchListClient({
     }
   }, []);
 
-  const deleteBatch = useCallback(async (id: string, name: string) => {
-    if (
-      !confirm(
-        `আপনি কি নিশ্চিত "${name}" ডিলিট করতে চান? এর সাথে সংযুক্ত সব বিক্রি ও খরচও মুছে যাবে।`,
-      )
-    ) {
-      return;
-    }
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
 
+  const handleDelete = useCallback(async () => {
+    if (!deleteTarget) return;
+    const { id, name } = deleteTarget;
     try {
       const res = await fetch(`/api/batches/${id}`, { method: "DELETE" });
       const json = await res.json();
@@ -83,8 +80,10 @@ export default function BatchListClient({
     } catch (err) {
       console.error("Failed to delete batch:", err);
       toast.error("ডিলিট করতে সমস্যা হয়েছে");
+    } finally {
+      setDeleteTarget(null);
     }
-  }, []);
+  }, [deleteTarget]);
 
   const filtered = useMemo(() => {
     return batches.filter((b) => {
@@ -318,7 +317,7 @@ export default function BatchListClient({
                   <button
                     className="btn btn-danger btn-sm"
                     type="button"
-                    onClick={() => deleteBatch(batch._id, batch.batchName)}
+                    onClick={() => setDeleteTarget({ id: batch._id, name: batch.batchName })}
                   >
                     <HiOutlineTrash size={18} />
                     ডিলিট
@@ -328,6 +327,21 @@ export default function BatchListClient({
             ))}
           </div>
         )}
+        <ConfirmModal
+          isOpen={!!deleteTarget}
+          onClose={() => setDeleteTarget(null)}
+          onConfirm={handleDelete}
+          title="ডিলিট নিশ্চিত করুন"
+          confirmText="ডিলিট"
+          confirmColor="danger"
+        >
+          <p>
+            আপনি কি নিশ্চিত <strong>&ldquo;{deleteTarget?.name}&rdquo;</strong> ডিলিট করতে চান?
+          </p>
+          <p style={{ fontSize: "0.8rem", marginTop: "0.5rem", opacity: 0.7 }}>
+            এর সাথে সংযুক্ত সব বিক্রি ও খরচও চিরতরে মুছে যাবে। এই কাজটি ফেরত নেওয়া যাবে না।
+          </p>
+        </ConfirmModal>
       </div>
     </PullToRefresh>
   );

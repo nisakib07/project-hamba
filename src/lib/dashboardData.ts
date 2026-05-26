@@ -54,6 +54,8 @@ export async function getDashboardData(): Promise<DashboardData> {
         $group: {
           _id: "$batchId",
           revenue: { $sum: "$total" },
+          paid: { $sum: "$paidAmount" },
+          due: { $sum: "$dueAmount" },
         },
       },
     ]),
@@ -84,7 +86,7 @@ export async function getDashboardData(): Promise<DashboardData> {
   for (const batch of batches) {
     const batchId = (batch as any)._id.toString();
     const meatStats = meatMap.get(batchId) ?? { revenue: 0, kgSold: 0, paid: 0, due: 0 };
-    const byproductStats = byproductMap.get(batchId) ?? { revenue: 0 };
+    const byproductStats = byproductMap.get(batchId) ?? { revenue: 0, paid: 0, due: 0 };
     const expenseStats = expenseMap.get(batchId) ?? { amount: 0 };
 
     const batchRevenue = meatStats.revenue + byproductStats.revenue;
@@ -99,8 +101,8 @@ export async function getDashboardData(): Promise<DashboardData> {
     totalRevenue += batchRevenue;
     totalCost += batchCost;
     totalKgSold += meatStats.kgSold;
-    totalPaid += meatStats.paid;
-    totalDue += meatStats.due;
+    totalPaid += meatStats.paid + byproductStats.paid;
+    totalDue += meatStats.due + byproductStats.due;
 
     batchSummaries.push({
       _id: batchId,

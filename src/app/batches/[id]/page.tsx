@@ -6,6 +6,7 @@ import Expense from "@/models/Expense";
 import { calculateProfit } from "@/lib/profitCalculator";
 import { getCustomerNames } from "@/lib/dashboardData";
 import BatchDetailClient from "@/components/BatchDetailClient";
+import mongoose from "mongoose";
 import { notFound } from "next/navigation";
 
 export const revalidate = 0;
@@ -14,7 +15,21 @@ interface PageProps {
   params: Promise<{ id: string }>;
 }
 
+export async function generateMetadata({ params }: PageProps) {
+  const { id } = await params;
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return { title: "ব্যাচ পাওয়া যায়নি | গরু ব্যবসা" };
+  }
+  await dbConnect();
+  const batch = await CowBatch.findById(id).select("batchName").lean();
+  if (!batch) {
+    return { title: "ব্যাচ পাওয়া যায়নি | গরু ব্যবসা" };
+  }
+  return { title: `${batch.batchName} | গরু ব্যবসা` };
+}
+
 async function getBatchData(id: string) {
+  if (!mongoose.Types.ObjectId.isValid(id)) return null;
   await dbConnect();
 
   const batch = await CowBatch.findById(id).lean();

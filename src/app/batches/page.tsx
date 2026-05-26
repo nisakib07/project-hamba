@@ -4,6 +4,10 @@ import CowBatch from "@/models/CowBatch";
 
 export const revalidate = 0;
 
+export const metadata = {
+  title: "ব্যাচ সমূহ | গরু ব্যবসা",
+};
+
 interface BatchItem {
   _id: string;
   batchName: string;

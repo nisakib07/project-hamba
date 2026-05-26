@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import PullToRefresh from "@/components/PullToRefresh";
 import Link from "next/link";
@@ -139,8 +139,7 @@ export default function BatchDetailClient({
     "",
   );
   const [saleType, setSaleType] = useState("meat");
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [fabOpen, setFabOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const meatInputRef = useRef<HTMLInputElement>(null);
   const bypInputRef = useRef<HTMLInputElement>(null);
 
@@ -257,35 +256,42 @@ export default function BatchDetailClient({
       }
     } catch (err) {
       console.error(err);
+      toast.error("ডাটা লোড করতে সমস্যা হয়েছে");
     }
   }, [id]);
 
   const updateBatch = async (e: React.FormEvent) => {
     e.preventDefault();
-    const payload = {
-      batchName: editForm.batchName,
-      purchaseDate: editForm.purchaseDate,
-      buyingCost: Number(editForm.buyingCost) || 0,
-      foodCost: Number(editForm.foodCost) || 0,
-      butcherCost: Number(editForm.butcherCost) || 0,
-      transportCost: Number(editForm.transportCost) || 0,
-      otherExpenses: Number(editForm.otherExpenses) || 0,
-      baseMeatPricePerKg: Number(editForm.baseMeatPricePerKg) || 0,
-      totalMeatKg: Number(editForm.totalMeatKg) || 0,
-      status: editForm.status,
-      notes: editForm.notes,
-    };
-    const res = await fetch(`/api/batches/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    const json = await res.json();
-    if (json.success) {
-      toast.success("ব্যাচ আপডেট হয়েছে!");
-      setModal("");
-      fetchData();
-    } else toast.error(json.error);
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      const payload = {
+        batchName: editForm.batchName,
+        purchaseDate: editForm.purchaseDate,
+        buyingCost: Number(editForm.buyingCost) || 0,
+        foodCost: Number(editForm.foodCost) || 0,
+        butcherCost: Number(editForm.butcherCost) || 0,
+        transportCost: Number(editForm.transportCost) || 0,
+        otherExpenses: Number(editForm.otherExpenses) || 0,
+        baseMeatPricePerKg: Number(editForm.baseMeatPricePerKg) || 0,
+        totalMeatKg: Number(editForm.totalMeatKg) || 0,
+        status: editForm.status,
+        notes: editForm.notes,
+      };
+      const res = await fetch(`/api/batches/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const json = await res.json();
+      if (json.success) {
+        toast.success("ব্যাচ আপডেট হয়েছে!");
+        setModal("");
+        fetchData();
+      } else toast.error(json.error);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleAdjustStock = async (e: React.FormEvent) => {
@@ -323,117 +329,138 @@ export default function BatchDetailClient({
 
   const addMeatSale = async (e: React.FormEvent) => {
     e.preventDefault();
-    const payload = {
-      customerName: meatForm.customerName,
-      kgQuantity: Number(meatForm.kgQuantity),
-      pricePerKg: Number(meatForm.pricePerKg),
-      paidAmount: Number(meatForm.paidAmount) || 0,
-      date: meatForm.date,
-      mergeIfExisting: meatForm.mergeIfExisting,
-    };
-    const res = await fetch(`/api/batches/${id}/meat-sales`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    const json = await res.json();
-    if (json.success) {
-      toast.success("গোশত বিক্রি যোগ/আপডেট হয়েছে");
-      setModal("");
-      setMeatForm({
-        customerName: "",
-        kgQuantity: "",
-        pricePerKg: String(batch?.baseMeatPricePerKg || ""),
-        paidAmount: "",
-        date: new Date().toISOString().split("T")[0],
-        mergeIfExisting: true,
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      const payload = {
+        customerName: meatForm.customerName,
+        kgQuantity: Number(meatForm.kgQuantity),
+        pricePerKg: Number(meatForm.pricePerKg),
+        paidAmount: Number(meatForm.paidAmount) || 0,
+        date: meatForm.date,
+        mergeIfExisting: meatForm.mergeIfExisting,
+      };
+      const res = await fetch(`/api/batches/${id}/meat-sales`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
       });
-      fetchData();
-      fetch("/api/customers")
-        .then((r) => r.json())
-        .then((j) => {
-          if (j.success) setCustomerNames(j.data);
+      const json = await res.json();
+      if (json.success) {
+        toast.success("গোশত বিক্রি যোগ/আপডেট হয়েছে");
+        setModal("");
+        setMeatForm({
+          customerName: "",
+          kgQuantity: "",
+          pricePerKg: String(batch?.baseMeatPricePerKg || ""),
+          paidAmount: "",
+          date: new Date().toISOString().split("T")[0],
+          mergeIfExisting: true,
         });
-    } else toast.error(json.error);
+        fetchData();
+      } else toast.error(json.error);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const addByproduct = async (e: React.FormEvent) => {
     e.preventDefault();
-    const payload = {
-      itemType: saleType,
-      quantity: Number(bypForm.quantity),
-      price: Number(bypForm.price),
-      buyerName: bypForm.buyerName,
-      paidAmount: Number(bypForm.paidAmount) || 0,
-      date: bypForm.date,
-      mergeIfExisting: bypForm.mergeIfExisting,
-    };
-    const res = await fetch(`/api/batches/${id}/byproducts`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    const json = await res.json();
-    if (json.success) {
-      toast.success("বিক্রি যোগ/আপডেট হয়েছে");
-      setModal("");
-      setBypForm({
-        itemType: "chamra",
-        quantity: "1",
-        price: "",
-        buyerName: "",
-        paidAmount: "",
-        date: new Date().toISOString().split("T")[0],
-        mergeIfExisting: true,
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      const payload = {
+        itemType: saleType,
+        quantity: Number(bypForm.quantity),
+        price: Number(bypForm.price),
+        buyerName: bypForm.buyerName,
+        paidAmount: Number(bypForm.paidAmount) || 0,
+        date: bypForm.date,
+        mergeIfExisting: bypForm.mergeIfExisting,
+      };
+      const res = await fetch(`/api/batches/${id}/byproducts`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
       });
-      fetchData();
-      fetch("/api/customers")
-        .then((r) => r.json())
-        .then((j) => {
-          if (j.success) setCustomerNames(j.data);
+      const json = await res.json();
+      if (json.success) {
+        toast.success("বিক্রি যোগ/আপডেট হয়েছে");
+        setModal("");
+        setBypForm({
+          itemType: "chamra",
+          quantity: "1",
+          price: "",
+          buyerName: "",
+          paidAmount: "",
+          date: new Date().toISOString().split("T")[0],
+          mergeIfExisting: true,
         });
-    } else toast.error(json.error);
+        fetchData();
+      } else toast.error(json.error);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const addExpense = async (e: React.FormEvent) => {
     e.preventDefault();
-    const payload = {
-      expenseType: expForm.expenseType,
-      amount: Number(expForm.amount),
-      note: expForm.note,
-      date: expForm.date,
-    };
-    const res = await fetch(`/api/batches/${id}/expenses`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    const json = await res.json();
-    if (json.success) {
-      toast.success("খরচ যোগ হয়েছে");
-      setModal("");
-      setExpForm({
-        expenseType: "food",
-        amount: "",
-        note: "",
-        date: new Date().toISOString().split("T")[0],
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      const payload = {
+        expenseType: expForm.expenseType,
+        amount: Number(expForm.amount),
+        note: expForm.note,
+        date: expForm.date,
+      };
+      const res = await fetch(`/api/batches/${id}/expenses`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
       });
-      fetchData();
-    } else toast.error(json.error);
+      const json = await res.json();
+      if (json.success) {
+        toast.success("খরচ যোগ হয়েছে");
+        setModal("");
+        setExpForm({
+          expenseType: "food",
+          amount: "",
+          note: "",
+          date: new Date().toISOString().split("T")[0],
+        });
+        fetchData();
+      } else toast.error(json.error);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
-    for (const item of deleteTarget.items) {
-      const url =
-        item.type === "meat"
-          ? `/api/batches/${id}/meat-sales/${item.id}`
-          : `/api/batches/${id}/byproducts/${item.id}`;
-      await fetch(url, { method: "DELETE" });
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      const results = await Promise.all(
+        deleteTarget.items.map((item) => {
+          const url =
+            item.type === "meat"
+              ? `/api/batches/${id}/meat-sales/${item.id}`
+              : `/api/batches/${id}/byproducts/${item.id}`;
+          return fetch(url, { method: "DELETE" });
+        })
+      );
+      const failed = results.filter((r) => !r.ok);
+      if (failed.length > 0) {
+        toast.error(`${failed.length}টি আইটেম ডিলিট করতে সমস্যা হয়েছে`);
+      } else {
+        toast.success(`${deleteTarget.name} এর সব বিক্রি ডিলিট হয়েছে`);
+      }
+      setDeleteTarget(null);
+      fetchData();
+    } finally {
+      setSubmitting(false);
     }
-    toast.success(`${deleteTarget.name} এর সব বিক্রি ডিলিট হয়েছে`);
-    setDeleteTarget(null);
-    fetchData();
   };
 
   const collectPayment = async () => {
@@ -443,34 +470,45 @@ export default function BatchDetailClient({
       toast.error("সঠিক পরিমাণ দিন");
       return;
     }
-    const itemsWithDue = collectTarget.items.filter((i) => i.due > 0);
-    for (const item of itemsWithDue) {
-      if (remaining <= 0) break;
-      const applyAmt = Math.min(remaining, item.due);
-      const newPaid = item.paid + applyAmt;
-      const newDue = item.total - newPaid;
-      const url =
-        item.type === "meat"
-          ? `/api/batches/${id}/meat-sales/${item.id}`
-          : `/api/batches/${id}/byproducts/${item.id}`;
-      await fetch(url, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          paidAmount: newPaid,
-          dueAmount: newDue,
-          totalPrice: item.total,
-          total: item.total,
-        }),
-      });
-      remaining -= applyAmt;
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      const itemsWithDue = collectTarget.items.filter((i) => i.due > 0);
+      for (const item of itemsWithDue) {
+        if (remaining <= 0) break;
+        const applyAmt = Math.min(remaining, item.due);
+        const newPaid = item.paid + applyAmt;
+        const newDue = item.total - newPaid;
+        const url =
+          item.type === "meat"
+            ? `/api/batches/${id}/meat-sales/${item.id}`
+            : `/api/batches/${id}/byproducts/${item.id}`;
+        const res = await fetch(url, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            paidAmount: newPaid,
+            dueAmount: newDue,
+            totalPrice: item.total,
+            total: item.total,
+          }),
+        });
+        if (!res.ok) {
+          toast.error("পেমেন্ট প্রক্রিয়ায় সমস্যা হয়েছে");
+          fetchData();
+          return;
+        }
+        remaining -= applyAmt;
+      }
+      toast.success(
+        `৳${Number(collectAmt)} আদায় হয়েছে ${collectTarget.name} থেকে`,
+      );
+      setCollectTarget(null);
+      setCollectAmt("");
+      fetchData();
+    } finally {
+      setSubmitting(false);
     }
-    toast.success(
-      `৳${Number(collectAmt)} আদায় হয়েছে ${collectTarget.name} থেকে`,
-    );
-    setCollectTarget(null);
-    setCollectAmt("");
-    fetchData();
   };
 
   const handleEditItem = async (item: typeof collectTarget extends null ? never : NonNullable<typeof collectTarget>["items"][number]) => {
@@ -513,12 +551,12 @@ export default function BatchDetailClient({
     }
   };
 
-  const filteredMeat = meatSales.filter((s) =>
+  const filteredMeat = useMemo(() => meatSales.filter((s) =>
     s.customerName.toLowerCase().includes(searchSales.toLowerCase()),
-  );
-  const filteredByp = byproducts.filter((b) =>
+  ), [meatSales, searchSales]);
+  const filteredByp = useMemo(() => byproducts.filter((b) =>
     (b.buyerName || "").toLowerCase().includes(searchSales.toLowerCase()),
-  );
+  ), [byproducts, searchSales]);
 
   const getSuggestions = (query: string) => {
     if (!query || query.trim().length < 1) return [];
@@ -530,7 +568,7 @@ export default function BatchDetailClient({
       .slice(0, 5);
   };
 
-  const allDues = [
+  const allDues = useMemo(() => [
     ...meatSales
       .filter((s) => s.dueAmount > 0)
       .map((s) => ({
@@ -551,7 +589,7 @@ export default function BatchDetailClient({
         paid: b.paidAmount,
         due: b.dueAmount,
       })),
-  ];
+  ], [meatSales, byproducts]);
 
   const tabs: { key: "sales" | "overview"; label: string }[] = [
     {
@@ -1140,17 +1178,17 @@ export default function BatchDetailClient({
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
                 <div className="form-group">
                   <label className="form-label">পরিমাণ (কেজি) *</label>
-                  <input type="number" step="0.01" className="form-input" value={meatForm.kgQuantity} onChange={(e) => setMeatForm({ ...meatForm, kgQuantity: e.target.value })} required />
+                  <input type="number" step="0.01" min="0" className="form-input" value={meatForm.kgQuantity} onChange={(e) => setMeatForm({ ...meatForm, kgQuantity: e.target.value })} required />
                 </div>
                 <div className="form-group">
                   <label className="form-label">দাম/কেজি (৳)</label>
-                  <input type="number" className="form-input" value={meatForm.pricePerKg} onChange={(e) => setMeatForm({ ...meatForm, pricePerKg: e.target.value })} required />
+                  <input type="number" min="0" className="form-input" value={meatForm.pricePerKg} onChange={(e) => setMeatForm({ ...meatForm, pricePerKg: e.target.value })} required />
                 </div>
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
                 <div className="form-group">
                   <label className="form-label">পেইড (৳)</label>
-                  <input type="number" className="form-input" value={meatForm.paidAmount} onChange={(e) => setMeatForm({ ...meatForm, paidAmount: e.target.value })} placeholder="না দিলে ০" />
+                  <input type="number" min="0" className="form-input" value={meatForm.paidAmount} onChange={(e) => setMeatForm({ ...meatForm, paidAmount: e.target.value })} placeholder="না দিলে ০" />
                 </div>
                 <div className="form-group">
                   <label className="form-label">তারিখ</label>
@@ -1189,17 +1227,17 @@ export default function BatchDetailClient({
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
                 <div className="form-group">
                   <label className="form-label">পরিমাণ</label>
-                  <input type="number" className="form-input" value={bypForm.quantity} onChange={(e) => setBypForm({ ...bypForm, quantity: e.target.value })} />
+                  <input type="number" min="0" className="form-input" value={bypForm.quantity} onChange={(e) => setBypForm({ ...bypForm, quantity: e.target.value })} />
                 </div>
                 <div className="form-group">
                   <label className="form-label">দাম (৳) *</label>
-                  <input type="number" className="form-input" value={bypForm.price} onChange={(e) => setBypForm({ ...bypForm, price: e.target.value })} required />
+                  <input type="number" min="0" className="form-input" value={bypForm.price} onChange={(e) => setBypForm({ ...bypForm, price: e.target.value })} required />
                 </div>
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
                 <div className="form-group">
                   <label className="form-label">পেইড (৳)</label>
-                  <input type="number" className="form-input" value={bypForm.paidAmount} onChange={(e) => setBypForm({ ...bypForm, paidAmount: e.target.value })} placeholder="না দিলে ০" />
+                  <input type="number" min="0" className="form-input" value={bypForm.paidAmount} onChange={(e) => setBypForm({ ...bypForm, paidAmount: e.target.value })} placeholder="না দিলে ০" />
                 </div>
                 <div className="form-group">
                   <label className="form-label">তারিখ</label>
@@ -1231,7 +1269,7 @@ export default function BatchDetailClient({
               </select>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
-              <div className="form-group"><label className="form-label">পরিমাণ (৳) *</label><input type="number" className="form-input" value={expForm.amount} onChange={(e) => setExpForm({ ...expForm, amount: e.target.value })} required /></div>
+              <div className="form-group"><label className="form-label">পরিমাণ (৳) *</label><input type="number" min="0.01" step="0.01" className="form-input" value={expForm.amount} onChange={(e) => setExpForm({ ...expForm, amount: e.target.value })} required /></div>
               <div className="form-group"><label className="form-label">তারিখ</label><input type="date" className="form-input" value={expForm.date} onChange={(e) => setExpForm({ ...expForm, date: e.target.value })} /></div>
             </div>
             <div className="form-group"><label className="form-label">নোট</label><input className="form-input" value={expForm.note} onChange={(e) => setExpForm({ ...expForm, note: e.target.value })} placeholder="ঐচ্ছিক নোট" /></div>
@@ -1244,19 +1282,19 @@ export default function BatchDetailClient({
             <div className="form-group"><label className="form-label">ব্যাচের নাম *</label><input className="form-input" value={editForm.batchName} onChange={(e) => setEditForm({ ...editForm, batchName: e.target.value })} required /></div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
               <div className="form-group"><label className="form-label">ক্রয়ের তারিখ</label><input type="date" className="form-input" value={editForm.purchaseDate} onChange={(e) => setEditForm({ ...editForm, purchaseDate: e.target.value })} /></div>
-              <div className="form-group"><label className="form-label">মোট গোশত (কেজি)</label><input type="number" step="0.01" className="form-input" value={editForm.totalMeatKg} onChange={(e) => setEditForm({ ...editForm, totalMeatKg: e.target.value })} /></div>
+              <div className="form-group"><label className="form-label">মোট গোশত (কেজি)</label><input type="number" step="0.01" min="0" className="form-input" value={editForm.totalMeatKg} onChange={(e) => setEditForm({ ...editForm, totalMeatKg: e.target.value })} /></div>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
-              <div className="form-group"><label className="form-label">ক্রয়মূল্য (৳)</label><input type="number" className="form-input" value={editForm.buyingCost} onChange={(e) => setEditForm({ ...editForm, buyingCost: e.target.value })} /></div>
-              <div className="form-group"><label className="form-label">খাবার খরচ (৳)</label><input type="number" className="form-input" value={editForm.foodCost} onChange={(e) => setEditForm({ ...editForm, foodCost: e.target.value })} /></div>
+              <div className="form-group"><label className="form-label">ক্রয়মূল্য (৳)</label><input type="number" min="0" className="form-input" value={editForm.buyingCost} onChange={(e) => setEditForm({ ...editForm, buyingCost: e.target.value })} /></div>
+              <div className="form-group"><label className="form-label">খাবার খরচ (৳)</label><input type="number" min="0" className="form-input" value={editForm.foodCost} onChange={(e) => setEditForm({ ...editForm, foodCost: e.target.value })} /></div>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
-              <div className="form-group"><label className="form-label">কসাই খরচ (৳)</label><input type="number" className="form-input" value={editForm.butcherCost} onChange={(e) => setEditForm({ ...editForm, butcherCost: e.target.value })} /></div>
-              <div className="form-group"><label className="form-label">পরিবহন খরচ (৳)</label><input type="number" className="form-input" value={editForm.transportCost} onChange={(e) => setEditForm({ ...editForm, transportCost: e.target.value })} /></div>
+              <div className="form-group"><label className="form-label">কসাই খরচ (৳)</label><input type="number" min="0" className="form-input" value={editForm.butcherCost} onChange={(e) => setEditForm({ ...editForm, butcherCost: e.target.value })} /></div>
+              <div className="form-group"><label className="form-label">পরিবহন খরচ (৳)</label><input type="number" min="0" className="form-input" value={editForm.transportCost} onChange={(e) => setEditForm({ ...editForm, transportCost: e.target.value })} /></div>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
-              <div className="form-group"><label className="form-label">অন্যান্য খরচ (৳)</label><input type="number" className="form-input" value={editForm.otherExpenses} onChange={(e) => setEditForm({ ...editForm, otherExpenses: e.target.value })} /></div>
-              <div className="form-group"><label className="form-label">বেস দাম/কেজি (৳)</label><input type="number" className="form-input" value={editForm.baseMeatPricePerKg} onChange={(e) => setEditForm({ ...editForm, baseMeatPricePerKg: e.target.value })} /></div>
+              <div className="form-group"><label className="form-label">অন্যান্য খরচ (৳)</label><input type="number" min="0" className="form-input" value={editForm.otherExpenses} onChange={(e) => setEditForm({ ...editForm, otherExpenses: e.target.value })} /></div>
+              <div className="form-group"><label className="form-label">বেস দাম/কেজি (৳)</label><input type="number" min="0" className="form-input" value={editForm.baseMeatPricePerKg} onChange={(e) => setEditForm({ ...editForm, baseMeatPricePerKg: e.target.value })} /></div>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
               <div className="form-group"><label className="form-label">স্ট্যাটাস</label><select className="form-select" value={editForm.status} onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}><option value="active">চলমান</option><option value="completed">সম্পন্ন</option></select></div>
@@ -1276,7 +1314,7 @@ export default function BatchDetailClient({
               </div>
               <div className="form-group" style={{ marginBottom: "1.25rem" }}>
                 <label className="form-label" style={{ fontWeight: 600, marginBottom: "0.5rem", display: "block" }}>বাস্তবে ফ্রিজে থাকা অবশিষ্ট গোশতের পরিমাণ (কেজি) *</label>
-                <input type="number" step="0.01" className="form-input" placeholder="যেমন: ১৫.৫" value={leftoverInput} onChange={(e) => setLeftoverInput(e.target.value)} required style={{ width: "100%" }} />
+                <input type="number" step="0.01" min="0" className="form-input" placeholder="যেমন: ১৫.৫" value={leftoverInput} onChange={(e) => setLeftoverInput(e.target.value)} required style={{ width: "100%" }} />
               </div>
               <div style={{ padding: "1rem", background: "rgba(16, 185, 129, 0.1)", border: "1px solid rgba(16, 185, 129, 0.2)", borderRadius: "10px", marginBottom: "1.5rem", fontSize: "0.95rem", color: "var(--accent-green)", fontWeight: 600, textAlign: "center" }}>
                 নতুন মোট গোশত হবে: {toBengaliDigits((profit.totalKgSold + (Number(leftoverInput) || 0)).toFixed(1))} কেজি
@@ -1320,6 +1358,7 @@ export default function BatchDetailClient({
                                     <input
                                       type="number"
                                       step="0.01"
+                                      min="0"
                                       className="form-input"
                                       style={{ height: "32px", fontSize: "0.85rem" }}
                                       value={editItemForm.kgQuantity}
@@ -1330,6 +1369,7 @@ export default function BatchDetailClient({
                                     <label className="form-label" style={{ fontSize: "0.75rem" }}>দাম/কেজি (৳)</label>
                                     <input
                                       type="number"
+                                      min="0"
                                       className="form-input"
                                       style={{ height: "32px", fontSize: "0.85rem" }}
                                       value={editItemForm.pricePerKg}
@@ -1343,6 +1383,7 @@ export default function BatchDetailClient({
                                     <label className="form-label" style={{ fontSize: "0.75rem" }}>পরিমাণ</label>
                                     <input
                                       type="number"
+                                      min="0"
                                       className="form-input"
                                       style={{ height: "32px", fontSize: "0.85rem" }}
                                       value={editItemForm.quantity}
@@ -1353,6 +1394,7 @@ export default function BatchDetailClient({
                                     <label className="form-label" style={{ fontSize: "0.75rem" }}>দাম (৳)</label>
                                     <input
                                       type="number"
+                                      min="0"
                                       className="form-input"
                                       style={{ height: "32px", fontSize: "0.85rem" }}
                                       value={editItemForm.price}

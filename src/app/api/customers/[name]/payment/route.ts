@@ -14,7 +14,8 @@ export async function POST(
     const body = await request.json();
     const { amount } = body;
 
-    if (!amount || typeof amount !== 'number' || amount <= 0) {
+    const parsedAmount = Number(amount);
+    if (amount === undefined || isNaN(parsedAmount) || parsedAmount <= 0) {
       return NextResponse.json({ success: false, error: "Invalid payment amount" }, { status: 400 });
     }
 
@@ -33,7 +34,7 @@ export async function POST(
       return new Date(dateA).getTime() - new Date(dateB).getTime();
     });
 
-    let remainingPayment = amount;
+    let remainingPayment = parsedAmount;
     const updatedRecords = [];
 
     // Apply FIFO logic
@@ -51,7 +52,7 @@ export async function POST(
     }
 
     if (remainingPayment > 0) {
-      console.warn(`Payment of ${amount} for ${name} exceeded total dues by ${remainingPayment}`);
+      console.warn(`Payment of ${parsedAmount} for ${name} exceeded total dues by ${remainingPayment}`);
       // In a real system, you might want to log an advance payment or credit balance,
       // but for this implementation, we simply apply up to the total due.
     }
@@ -59,7 +60,7 @@ export async function POST(
     return NextResponse.json({
       success: true,
       message: "Payment processed successfully",
-      appliedAmount: amount - remainingPayment,
+      appliedAmount: parsedAmount - remainingPayment,
       excessAmount: remainingPayment,
       updatedRecordsCount: updatedRecords.length
     });

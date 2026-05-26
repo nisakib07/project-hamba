@@ -81,8 +81,9 @@ export function calculateProfit(
   const profitPerKg = totalKgSold > 0 && avgSellingPricePerKg > 0 ? avgSellingPricePerKg - baseCost : 0;
 
   // Inventory Stock Value & Projected Profit calculations
+  const sellingPriceForProjection = batch.baseMeatPricePerKg || avgSellingPricePerKg || baseCost;
   const stockValue = remainingKg * baseCost;
-  const projectedRevenue = totalRevenue + (remainingKg * baseCost);
+  const projectedRevenue = totalRevenue + (remainingKg * sellingPriceForProjection);
   const projectedProfit = projectedRevenue - totalCost;
 
   // Payment tracking (meat + byproduct)

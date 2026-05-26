@@ -13,16 +13,17 @@ export default function PwaInstallPrompt() {
       setShowInstall(true);
     };
 
-    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
-
-    // Hide prompt if app is already installed
-    window.addEventListener("appinstalled", () => {
+    const handleAppInstalled = () => {
       setShowInstall(false);
       setDeferredPrompt(null);
-    });
+    };
+
+    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+    window.addEventListener("appinstalled", handleAppInstalled);
 
     return () => {
       window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+      window.removeEventListener("appinstalled", handleAppInstalled);
     };
   }, []);
 
