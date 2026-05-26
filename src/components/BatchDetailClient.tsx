@@ -226,7 +226,7 @@ export default function BatchDetailClient({
 
   const fetchData = useCallback(async () => {
     try {
-      const res = await fetch(`/api/batches/${id}`);
+      const res = await fetch(`/api/batches/${id}`, { cache: "no-store" });
       const json = await res.json();
       if (json.success) {
         const b = json.data.batch;

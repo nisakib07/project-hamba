@@ -1,9 +1,12 @@
-const CACHE_NAME = "hamba-v1";
+const CACHE_NAME = "hamba-v2";
 
-// Assets to pre-cache on install (app shell)
-const PRECACHE_ASSETS = ["/", "/icon-512x512.png", "/manifest.json"];
+// Only pre-cache truly static assets — NOT dynamic pages like "/"
+const PRECACHE_ASSETS = ["/icon-512x512.png", "/manifest.json"];
 
-// Install: pre-cache the app shell
+// File extensions that are safe to cache with cache-first strategy
+const STATIC_EXTENSIONS = /\.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot|webp|avif)(\?.*)?$/;
+
+// Install: pre-cache static assets only
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(PRECACHE_ASSETS))
@@ -25,7 +28,7 @@ self.addEventListener("activate", (event) => {
   self.clients.claim();
 });
 
-// Fetch: Network-first strategy for API/data, Cache-first for static assets
+// Fetch: Network-first for pages, Cache-first ONLY for static assets
 self.addEventListener("fetch", (event) => {
   const { request } = event;
   const url = new URL(request.url);
@@ -35,6 +38,12 @@ self.addEventListener("fetch", (event) => {
 
   // For API routes — always go to network, don't cache
   if (url.pathname.startsWith("/api/")) {
+    return;
+  }
+
+  // Skip Next.js RSC (React Server Component) requests — these carry dynamic data
+  // and must always hit the network to get fresh server-rendered content
+  if (request.headers.get("RSC") || request.headers.get("Next-Router-State-Tree")) {
     return;
   }
 
@@ -52,18 +61,23 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // For static assets — cache-first with network fallback
-  event.respondWith(
-    caches.match(request).then((cached) => {
-      if (cached) return cached;
-      return fetch(request).then((response) => {
-        // Only cache successful same-origin responses
-        if (response.ok && url.origin === self.location.origin) {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
-        }
-        return response;
-      });
-    })
-  );
+  // For static assets (JS, CSS, images, fonts) — cache-first with network fallback
+  if (STATIC_EXTENSIONS.test(url.pathname)) {
+    event.respondWith(
+      caches.match(request).then((cached) => {
+        if (cached) return cached;
+        return fetch(request).then((response) => {
+          // Only cache successful same-origin responses
+          if (response.ok && url.origin === self.location.origin) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+          }
+          return response;
+        });
+      })
+    );
+    return;
+  }
+
+  // For everything else — let the browser handle normally (network only)
 });
