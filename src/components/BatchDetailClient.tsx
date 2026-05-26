@@ -813,7 +813,7 @@ export default function BatchDetailClient({
               {batch.batchName}
             </h1>
             <p style={{ color: "var(--text-muted)", fontSize: "0.85rem" }}>
-              ক্রয়ের তারিখ:{" "}
+              জবাইয়ের তারিখ:{" "}
               {formatBengaliDate(batch.purchaseDate, { day: "numeric", month: "short", includeYear: true })}
             </p>
           </div>
@@ -1281,7 +1281,7 @@ export default function BatchDetailClient({
           <form onSubmit={updateBatch}>
             <div className="form-group"><label className="form-label">ব্যাচের নাম *</label><input className="form-input" value={editForm.batchName} onChange={(e) => setEditForm({ ...editForm, batchName: e.target.value })} required /></div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
-              <div className="form-group"><label className="form-label">ক্রয়ের তারিখ</label><input type="date" className="form-input" value={editForm.purchaseDate} onChange={(e) => setEditForm({ ...editForm, purchaseDate: e.target.value })} /></div>
+              <div className="form-group"><label className="form-label">জবাইয়ের তারিখ</label><input type="date" className="form-input" value={editForm.purchaseDate} onChange={(e) => setEditForm({ ...editForm, purchaseDate: e.target.value })} /></div>
               <div className="form-group"><label className="form-label">মোট গোশত (কেজি)</label><input type="number" step="0.01" min="0" className="form-input" value={editForm.totalMeatKg} onChange={(e) => setEditForm({ ...editForm, totalMeatKg: e.target.value })} /></div>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
